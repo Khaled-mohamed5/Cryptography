@@ -1,0 +1,27 @@
+# In-scope JS assets - staging.prevail.ai ONLY
+# Source: katana crawl of https://staging.prevail.ai/
+# Program scope: staging.prevail.ai in scope; prevail.ai (production),
+# blog.prevail.ai and help.prevail.ai are OUT OF SCOPE and deliberately excluded.
+#
+# Priority 1 - staging-only build (digest differs from production)
+https://staging.prevail.ai/assets/custom_elements_2025-cbdf736b.js
+#
+# Priority 2 - first-party application code
+https://staging.prevail.ai/assets/application-8c4c6e5b.js
+https://staging.prevail.ai/assets/application_2025-d07cb54b.js
+https://staging.prevail.ai/assets/application_base-c65af66b.js
+https://staging.prevail.ai/assets/custom_elements-665a25a5.js
+https://staging.prevail.ai/assets/remote_session_elements-a37c5ac4.js
+https://staging.prevail.ai/assets/gameplan_elements-cb914a1d.js
+https://staging.prevail.ai/assets/speaker_tagging_application-fda6588c.js
+https://staging.prevail.ai/assets/speaker_tagging_media_player-c5188b63.js
+https://staging.prevail.ai/assets/controllers/suggestable/suggestable_field_controller-a244f78d.js
+https://staging.prevail.ai/assets/core_extensions/index-9bd6c003.js
+https://staging.prevail.ai/assets/core_extensions/form_data_extensions-28bf9857.js
+https://staging.prevail.ai/assets/turbo_actions/stream_actions-e571c7da.js
+#
+# Priority 3 - vendor / framework (still worth scanning for pinned old versions)
+https://staging.prevail.ai/assets/actiontext.esm-c376325e.js
+https://staging.prevail.ai/assets/trix-2e4b1469.js
+https://staging.prevail.ai/assets/stimulus-loading-1fc53fe7.js
+https://staging.prevail.ai/assets/appsignal/index-00d4a03c.js
