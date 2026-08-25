@@ -1,0 +1,3 @@
+# fetched target assets and analysis output stay local - never commit
+out/
+__pycache__/
