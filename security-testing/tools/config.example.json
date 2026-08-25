@@ -11,7 +11,12 @@
     "The harvest groups below are a generic REST shape. Replace them with the real",
     "paths from your own browser traffic: open devtools, use the app normally,",
     "and copy the request URLs the front end actually calls. Guessed endpoints",
-    "produce noise and waste your request budget."
+    "produce noise and waste your request budget.",
+    "",
+    "NOTE for sevDesk: the web app calls /v5/... (e.g. /v5/user/settings), which is",
+    "a different surface from the public /api/v1/ documented API. Test BOTH - they",
+    "are separate code paths and will not necessarily enforce the same tenant",
+    "checks. Capture /v5/ from devtools XHR traffic, /api/v1/ from the API docs."
   ],
 
   "target": {
