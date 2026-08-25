@@ -16,7 +16,13 @@
     "NOTE for sevDesk: the web app calls /v5/... (e.g. /v5/user/settings), which is",
     "a different surface from the public /api/v1/ documented API. Test BOTH - they",
     "are separate code paths and will not necessarily enforce the same tenant",
-    "checks. Capture /v5/ from devtools XHR traffic, /api/v1/ from the API docs."
+    "checks. Capture /v5/ from devtools XHR traffic, /api/v1/ from the API docs.",
+    "",
+    "THE TWO SURFACES USE DIFFERENT AUTH. /v5/ takes the sevToken session cookie;",
+    "/api/v1/ takes an API token in an Authorization header. Sending cookies to",
+    "/api/v1/ returns 401 - that is an unauthenticated request being rejected, NOT",
+    "an authorization check passing. Always establish a positive control first:",
+    "read your OWN object and confirm 200 before concluding anything from a denial."
   ],
 
   "target": {
