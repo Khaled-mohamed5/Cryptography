@@ -1,0 +1,87 @@
+{
+  "_comment": [
+    "Copy to config.json and fill in. config.json is gitignored.",
+    "",
+    "1. Set target.base_url to the asset you are authorized to test.",
+    "2. Set target.marker_header to your HackerOne username.",
+    "3. Export the two cookie env vars before running.",
+    "",
+    "NEVER put cookies, tokens or passwords in this file - use headers_from_env.",
+    "",
+    "The harvest groups below are a generic REST shape. Replace them with the real",
+    "paths from your own browser traffic: open devtools, use the app normally,",
+    "and copy the request URLs the front end actually calls. Guessed endpoints",
+    "produce noise and waste your request budget."
+  ],
+
+  "target": {
+    "base_url": "https://TARGET-HOST-YOU-ARE-AUTHORIZED-TO-TEST",
+    "marker_header": {
+      "X-Bug-Bounty": "REPLACE-WITH-YOUR-H1-USERNAME"
+    }
+  },
+
+  "safety": {
+    "requests_per_second": 2.0,
+    "max_requests": 400,
+    "allowed_methods": ["GET"],
+    "timeout_seconds": 20
+  },
+
+  "accounts": {
+    "A": {
+      "_role": "tenant that owns the objects being harvested",
+      "headers_from_env": {
+        "Cookie": "ACCT_A_COOKIE"
+      }
+    },
+    "B": {
+      "_role": "separate tenant that must NOT be able to read A's objects",
+      "headers_from_env": {
+        "Cookie": "ACCT_B_COOKIE"
+      }
+    }
+  },
+
+  "harvest": [
+    {
+      "_comment": [
+        "One group per object type. 'list' is a collection endpoint you can read as A.",
+        "'id_paths' pulls ids out of that response (minimal JSONPath subset).",
+        "'detail' is every representation of a single object worth testing - this is",
+        "the important part. The plain JSON GET is usually protected; the PDF render,",
+        "the embed expansion and the sub-collections often are not."
+      ],
+      "name": "PrimaryObject",
+      "list": "{base_url}/api/v1/PrimaryObject?limit=25",
+      "id_paths": ["objects[*].id"],
+      "max_ids": 10,
+      "detail": [
+        "{base_url}/api/v1/PrimaryObject/{id}",
+        "{base_url}/api/v1/PrimaryObject/{id}/getPdf",
+        "{base_url}/api/v1/PrimaryObject/{id}?embed=relatedObject",
+        "{base_url}/api/v1/PrimaryObject/{id}/getPositions"
+      ]
+    },
+    {
+      "name": "RelatedObject",
+      "list": "{base_url}/api/v1/RelatedObject?limit=25",
+      "id_paths": ["objects[*].id"],
+      "max_ids": 10,
+      "detail": [
+        "{base_url}/api/v1/RelatedObject/{id}",
+        "{base_url}/api/v1/RelatedObject/{id}?embed=addresses,contactDetails"
+      ]
+    },
+    {
+      "name": "UploadedDocument",
+      "list": "{base_url}/api/v1/UploadedDocument?limit=25",
+      "id_paths": ["objects[*].id"],
+      "max_ids": 5,
+      "detail": [
+        "{base_url}/api/v1/UploadedDocument/{id}",
+        "{base_url}/api/v1/UploadedDocument/{id}/download"
+      ]
+    }
+  ]
+}

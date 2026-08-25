@@ -1,0 +1,11 @@
+# Never commit anything that authenticates, identifies a target, or contains
+# another company's data pulled out during testing.
+tools/config.json
+evidence/*
+!evidence/.gitkeep
+*.jsonl
+.env
+*.har
+cookies.txt
+__pycache__/
+*.pyc
