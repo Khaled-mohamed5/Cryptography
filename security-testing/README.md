@@ -6,9 +6,11 @@ control, IDOR, injection and business-logic flaws, under a bug bounty program.
 | File | What it is |
 |---|---|
 | `TEST-PLAN.md` | The methodology. Ordered by expected value for an accounting SaaS target, not by OWASP category. Read this first. |
+| `tools/har_to_config.py` | Turns a recorded browser session (HAR) into a ready config with the endpoints the app really calls. Start here — it replaces hand-copying URLs from devtools. |
 | `tools/authz_diff.py` | Two-account authorization differ. Harvests object IDs as tenant A, replays each as tenant B and as an anonymous client, classifies the result. |
-| `tools/config.example.json` | Config template. Copy to `config.json` (gitignored) and fill in. |
-| `tools/test_authz_diff.py` | Unit tests for the extraction and classification logic. No network. |
+| `tools/config.example.json` | Config template, if you'd rather write it by hand. Copy to `config.json` (gitignored). |
+| `tools/test_*.py` | 32 unit tests over the extraction, grouping and classification logic. No network. |
+| `payloads/renderer-injection.md` | Server-side PDF/export injection — file read, SSRF, CSV formula injection. The highest-severity manual test on this kind of target. |
 | `REPORT-TEMPLATE.md` | Submission template. |
 
 ## Who runs this
@@ -17,39 +19,52 @@ You do, under your own HackerOne account. The tool needs your session cookies an
 traffic to a live production system, so it has to be executed by the person who accepted
 the program terms and is accountable for that traffic.
 
-## Setup
+## Workflow
 
 ```bash
 pip install requests
-cp tools/config.example.json tools/config.json
+cd tools
 ```
 
-Edit `tools/config.json`:
+**1. Record a session as account A.** Log in, open devtools → Network, tick *Preserve log*,
+then exercise the app: list invoices, open one, view its PDF, open a contact, download a
+receipt. Every feature you touch becomes a test case. Right-click the request list →
+*Save all as HAR with content*.
 
-1. `target.base_url` — the asset you are authorized to test.
-2. `target.marker_header` — your HackerOne username. The tool refuses to run until you
-   change it, because the vendor needs to be able to attribute the traffic.
-3. `harvest[]` — **replace the placeholder endpoints with real ones.** Open devtools,
-   use the application normally as account A, and copy the request URLs the front end
-   actually calls. Guessed endpoints burn your request budget on 404s.
+**2. Generate the config.**
 
-Then export the cookies for your two test tenants — copy them from devtools, and note
-that they expire, so re-export when a run comes back all-401:
+```bash
+python3 har_to_config.py session.har --host <api-host> --h1-username <you> -o config.json
+```
+
+Note the API host is often an `api.*` subdomain, not the one in the address bar. Review the
+result and delete groups you don't care about — every group costs requests from your budget.
+Any group marked `CHANGE-ME` is a detail endpoint whose collection wasn't in the recording;
+give it a list URL or drop it.
+
+**3. Export both tenants' cookies.** They expire, so re-export when a run comes back all-401.
 
 ```bash
 export ACCT_A_COOKIE='...'
 export ACCT_B_COOKIE='...'
 ```
 
-## Running
+**4. Run it.**
 
 ```bash
-cd tools
-
 python3 authz_diff.py --config config.json --dry-run          # plan only, no traffic
 python3 authz_diff.py --config config.json --out ../evidence/run1
-python3 -m unittest test_authz_diff -v                        # verify the logic
+python3 -m unittest discover -p 'test_*.py'                   # verify the logic
 ```
+
+Output is `run1.md` (summary) and `run1.jsonl` (full evidence, one finding per line).
+
+**5. Delete the HAR.** It contains your session cookies and every response body from that
+browsing session. `*.har` is gitignored, but delete it anyway.
+
+The differ covers IDOR mechanically. It does not cover the logic bugs in §4 of the test plan
+or the renderer injection in `payloads/` — those are manual, and they're where the
+higher-severity findings usually are.
 
 Output is `run1.md` (summary) and `run1.jsonl` (full evidence, one finding per line).
 
