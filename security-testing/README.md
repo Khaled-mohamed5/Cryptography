@@ -5,6 +5,7 @@ control, IDOR, injection and business-logic flaws, under a bug bounty program.
 
 | File | What it is |
 |---|---|
+| `SCOPE.md` | **Read first.** The program's rules: the blocking prerequisites, what is excluded, and how severity is scored. Several obvious-looking tests are explicitly out of scope. |
 | `TEST-PLAN.md` | The methodology. Ordered by expected value for an accounting SaaS target, not by OWASP category. Read this first. |
 | `tools/har_to_config.py` | Turns a recorded browser session (HAR) into a ready config with the endpoints the app really calls. Start here — it replaces hand-copying URLs from devtools. |
 | `tools/authz_diff.py` | Two-account authorization differ. Harvests object IDs as tenant A, replays each as tenant B and as an anonymous client, classifies the result. |

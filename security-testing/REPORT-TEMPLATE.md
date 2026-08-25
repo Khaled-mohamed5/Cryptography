@@ -69,7 +69,7 @@ State this explicitly — it materially improves how a cross-tenant report is re
 > I confirmed read access using `GET` only. I deliberately did not attempt to modify or
 > delete any record belonging to the victim tenant, and I did not access any tenant other
 > than the two test accounts listed above. Total requests sent: `___`, rate-limited to
-> `___`/second. All requests carried the header `X-Bug-Bounty: <h1username>`.
+> `___`/second. All requests carried the header `X-HackerOne-Research: <h1username>`.
 
 ## Suggested remediation
 

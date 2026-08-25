@@ -1,14 +1,39 @@
 # Server-side renderer injection
 
+> ## ⚠️ Out of scope on the sevDesk program
+>
+> The program policy states that the invoice PDF custom layout feature *"allows users to
+> embed external resources via `<img>`, `<iframe>`, fonts, files, and make HTTP requests.
+> This is intended behavior. SSRF and similar issues caused by external content loading or
+> HTTP requests through these features are out of scope."*
+>
+> **Sections 1–5 below do not apply to this target.** Do not spend time on `file:///` reads,
+> cloud metadata SSRF, or collaborator callbacks through invoice templates — it is a known
+> and accepted design decision, and submitting it wastes a report on a guaranteed
+> out-of-scope close.
+>
+> What survives the exclusion:
+> - **CSV / formula injection in exports** (last section) — a different feature, not covered
+>   by the PDF exclusion.
+> - **Cross-tenant access to a rendered PDF** — that is cross-client access, explicitly
+>   carved back into scope. See §1 of `TEST-PLAN.md`, not this file.
+> - **XSS that fires in a victim's browser** rather than in the renderer. See §3 of
+>   `TEST-PLAN.md`, and prioritise the AngularJS template-injection vector.
+>
+> The rest of this file is kept as reference for other targets, where this is usually the
+> highest-severity finding available on an invoicing product. It is retained deliberately:
+> the technique is correct, it just does not apply here.
+
+---
+
 For any feature that converts user-controlled input into a document server-side — invoice
 and offer PDFs, exports, email templates. If the pipeline is headless Chrome, `wkhtmltopdf`,
 `Puppeteer`, `WeasyPrint` or similar, injected markup is parsed **on the vendor's server**,
 not in a victim's browser. That turns what looks like a formatting bug into local file read
 or SSRF against internal infrastructure.
 
-This is normally the highest-severity finding available on an invoicing product, and it is
-routinely missed because testers check the field for `<script>alert(1)</script>`, see no
-browser popup, and move on.
+It is routinely missed because testers check the field for `<script>alert(1)</script>`, see
+no browser popup, and move on.
 
 ## Where to inject
 

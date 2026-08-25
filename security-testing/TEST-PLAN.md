@@ -18,13 +18,16 @@ particular target, not the order they appear in OWASP.
 
 ## 0. Before you send a single request
 
-- [ ] Read the program policy in full. Note the rate-limit rule, the automated-scanning
-      rule, and whether self-registered accounts are permitted (some programs require you
-      to claim their issued test credentials — the program page shows
-      "1 asset with credentials, 0 claimed by you").
-- [ ] Set an identifying header on **every** request so the vendor's SOC can attribute your
-      traffic and not page someone at 03:00: `X-Bug-Bounty: <your-h1-username>`.
-      The harness in `tools/` does this for you.
+> **Read `SCOPE.md` first.** It distills the program's actual rules. Several things that
+> look like the highest-value tests on a product like this are explicitly excluded, and
+> the exclusions are annotated inline below.
+
+- [ ] **Email security@sevdesk.de and get your IP whitelisted.** The policy requires this
+      before any testing, and their WAF will block you until it is done. This is a hard
+      gate — nothing else on this list matters until it clears.
+- [ ] Claim the program's test credentials on HackerOne (currently 0 claimed by you).
+- [ ] Set the header the program mandates on **every** request:
+      `X-HackerOne-Research: <your-h1-username>`. The harness in `tools/` enforces this.
 - [ ] **Register both test accounts under your HackerOne alias**, not a personal address:
       `<your-h1-username>@wearehackerone.com`, which forwards to your real inbox. Several
       programs require this and will close reports filed from unattributable accounts;
@@ -64,7 +67,7 @@ where the check gets skipped:
 
 | Surface | Why it breaks |
 |---|---|
-| `GET /api/v1/Invoice/{id}/getPdf` | PDF renderer often takes a different code path with its own (missing) check |
+| `GET /api/v1/Invoice/{id}/getPdf` | PDF renderer often takes a different code path with its own (missing) check. **Still in scope** — the PDF exclusion covers SSRF *via the custom-layout feature*, not cross-tenant access to a rendered document. Reading another tenant's invoice PDF is cross-client access, which the policy explicitly carves back in. |
 | `sendViaEmail` / `sendByWithRender` | Mailer resolves the object before authorizing it |
 | `?embed=contact,contactPerson,sevClient` | **The single highest-yield parameter on this API.** The parent may be authorized while the *embedded* child is fetched by raw ID with no check. Try embedding across tenants. |
 | `?sevQuery[...]` filters | Filter may run before the tenant scope is applied |
@@ -89,14 +92,34 @@ where the check gets skipped:
 Distinct from IDOR: here the object is inside your tenant but your *role* should not reach
 the operation.
 
+> **Scope warning — read this before investing time.** The program excludes *"authenticated
+> users accessing admin-only API actions within their own client that have no financial
+> impact."* Plain same-tenant role escalation is therefore **not rewardable** on its own.
+> The exclusion explicitly does not cover **cross-client access, unauthenticated access,
+> stored XSS, or impersonation** — and it is qualified by *"no financial impact"*, so a
+> same-tenant admin action that moves money or alters accounting records falls outside the
+> exclusion by its own terms.
+>
+> Practically: for every item below, ask what makes it rewardable — does it cross a tenant
+> boundary, work unauthenticated, enable impersonation, or have financial impact? If none
+> of those, note it and move on rather than writing it up.
+
 - [ ] **API token vs. UI session.** Generate an API token as the low-privileged employee user.
       Then call admin-only operations with it. A very common failure: role checks are
       enforced in the web front end / session middleware and skipped entirely for token auth.
-      This alone is worth the whole session if it lands.
+      Same-tenant only, this is excluded — so push it: does the token reach *another* tenant's
+      objects, or perform an action with financial impact?
 - [ ] **Vertical escalation via the invite flow.** Invite a user and tamper with the role field
       in the request (`role`, `sevUserRole`, `permissions[]`, a nested object). Then accept the
       invite and check the effective role. Also try re-sending an invite with an elevated role,
-      and editing your *own* user record to raise your role.
+      and editing your *own* user record to raise your role. The rewardable version is
+      inviting yourself into, or escalating within, a tenant that is not yours — that is
+      cross-client access, and arguably impersonation.
+- [ ] **Mass assignment (Spring Boot / Jackson).** The stack binds JSON to objects, so submit
+      fields the UI never sends: `id`, `sevClient`, `objectName`, `create`, `role`,
+      `additionalInformation`. Setting `sevClient` to another tenant's ID on create or update
+      is the highest-value variant — if an object can be written into someone else's tenant,
+      that is cross-client access, not a same-tenant admin issue.
 - [ ] **Tax advisor scope.** The advisor grant is a deliberate cross-tenant bridge, which makes
       it the most interesting authorization surface in the product. Once A grants advisor access
       to B: can B write where it should only read? Can B reach objects outside the booking data
@@ -115,25 +138,32 @@ the operation.
 
 ## 3. XSS and injection into rendered output
 
-Reflected XSS on a SaaS dashboard is usually low. On this target the interesting sinks are
-**stored** and they are **not the browser**.
+**Stored XSS is one of the four things explicitly carved back into scope**, alongside
+cross-client access, unauthenticated access and impersonation. So unlike most of §2, this
+section pays on its own merits. Reflected XSS on a dashboard is still usually low; stored is
+where the value is.
+
+> **Excluded: the PDF renderer.** Injecting `<iframe>`, `<img>`, fonts or outbound HTTP into
+> the invoice custom-layout feature is **intended behaviour** and explicitly out of scope,
+> SSRF included. Do not spend time on `file:///`, `169.254.169.254`, or collaborator
+> callbacks through invoice templates — it is a known, accepted design decision. The
+> exclusion is about *content loading*, so it does not cover cross-tenant access to a
+> rendered PDF (§1) or XSS that fires in a browser rather than the renderer.
 
 - [ ] **Stored XSS in tenant data rendered to other users.** Contact name, company name, invoice
       line-item description, invoice header/footer free text, custom field values, tag names,
       uploaded receipt filename, bank transaction memo. Payload fires for the *other users in the
       tenant* and, via the advisor grant, potentially across tenants — say so in the impact
-      section, it raises severity.
-- [ ] **HTML injection into the PDF renderer — check this properly.** Invoices are user-templated
-      HTML converted to PDF server-side. If a headless browser or `wkhtmltopdf` renders your
-      input, then injected markup runs *on the server*, not in a victim's browser:
-      - `<iframe src="file:///etc/passwd">` → local file read
-      - `<img src="http://169.254.169.254/latest/meta-data/iam/security-credentials/">` → cloud
-        metadata SSRF → credential theft
-      - `<link rel=stylesheet href="http://your-collab/">` → blind SSRF confirmation
-      Generate the PDF and *open it* — a file-read shows up as text in the rendered document.
-      This is the single highest-severity thing on this list. It is a critical, not a medium.
-- [ ] **SSRF via logo / template asset URL.** Anywhere the product accepts a URL for a company
-      logo or template resource, point it at internal ranges and at your collaborator.
+      section, it raises severity. Cross-tenant delivery also moves CVSS Privileges Required
+      from High to None, which is the difference between a low and a critical here.
+- [ ] **AngularJS client-side template injection.** The scope page lists **Angular.js** — the
+      1.x line, which evaluates `{{ }}` expressions in the DOM. Anywhere your stored input
+      lands inside an Angular-controlled region, template injection gives you script execution
+      even when HTML is being escaped correctly, because the payload contains no HTML at all.
+      Probe with `{{7*7}}` and look for `49` in the rendered page; escalate with a sandbox
+      escape appropriate to the exact 1.x version (`{{constructor.constructor('alert(1)')()}}`
+      works on 1.6+, which removed the sandbox). This is the highest-value XSS vector on this
+      stack and it is invisible to a scanner that only tries `<script>` tags.
 - [ ] **HTML injection into outbound email.** Invoices are emailed to customers from sevDesk's
       infrastructure. Injection there is a phishing primitive sent from a trusted domain with
       the vendor's SPF/DKIM. Also test header injection via the recipient/subject fields.
@@ -167,11 +197,10 @@ original.
       submitted total disagree.
 - [ ] **Currency.** Change currency after totals are computed. Mix currencies across line items.
       Check whether the exchange rate is client-supplied.
-- [ ] **Subscription and plan limits.** Whatever the plan caps — invoice count, user seats, bank
-      connections, storage — hit the cap in the UI, then create one more directly via the API.
-      Limits enforced only in the front end are a classic and are usually accepted as a medium.
-- [ ] **Trial abuse.** Can the trial be extended by resetting a field, re-registering with a `+`
-      alias, or changing the tenant creation date?
+- [ ] ~~**Subscription and plan limits.**~~ **Out of scope.** The add-on menu
+      (`/admin/addons`) is excluded, as is *"any other feature that requires payment"* —
+      on both supplied credentials and self-created trials. Plan-limit bypass and trial
+      extension both land inside that exclusion. Skip entirely.
 - [ ] **State-machine skipping.** Draft → sent → paid → cancelled. Try each illegal transition
       directly: mark paid without sending, un-cancel a cancelled invoice, pay a draft, reopen a
       closed accounting period, book into a locked fiscal year.

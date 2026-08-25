@@ -429,7 +429,7 @@ def main() -> int:
     if not marker or any("REPLACE" in v for v in marker.values()):
         sys.exit(
             "set target.marker_header to something identifying you, e.g. "
-            '{"X-Bug-Bounty": "your-h1-username"} — the vendor needs to be able '
+            '{"X-HackerOne-Research": "your-h1-username"} — the vendor needs to be able '
             "to attribute this traffic"
         )
 

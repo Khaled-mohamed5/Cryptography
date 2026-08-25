@@ -17,7 +17,7 @@
   "target": {
     "base_url": "https://TARGET-HOST-YOU-ARE-AUTHORIZED-TO-TEST",
     "marker_header": {
-      "X-Bug-Bounty": "REPLACE-WITH-YOUR-H1-USERNAME"
+      "X-HackerOne-Research": "REPLACE-WITH-YOUR-H1-USERNAME"
     }
   },
 

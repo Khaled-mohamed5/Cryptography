@@ -252,7 +252,7 @@ def main() -> int:
         ],
         "target": {
             "base_url": base_url,
-            "marker_header": {"X-Bug-Bounty": args.h1_username},
+            "marker_header": {"X-HackerOne-Research": args.h1_username},
         },
         "safety": {
             "requests_per_second": 2.0,
