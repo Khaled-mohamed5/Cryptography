@@ -1,0 +1,12 @@
+# Build artifacts — sola-idor-toolkit.zip is generated from the tracked
+# sources in sola-idor-toolkit/. GitHub serves a branch archive already:
+# /archive/refs/heads/<branch>.zip
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Test output (may contain tokens / harvested identifiers)
+findings/
+.env
