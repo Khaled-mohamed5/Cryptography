@@ -112,6 +112,19 @@ class Safety:
     # Stop the whole run after this many consecutive transport errors.
     max_consecutive_errors: int = 8
 
+    # Edge WAFs in front of production APIs block intermittently - a request
+    # refused once frequently succeeds moments later. These retries exist for
+    # that flakiness; they do not attempt to evade the WAF, and a consistent
+    # block is reported rather than worked around.
+    waf_retries: int = 3
+    waf_backoff: float = 4.0
+
+    # HackerOne handle, sent on every request so the target's SOC can attribute
+    # this traffic to authorised research rather than treating it as an attack.
+    # Programs behind a WAF often use this to allowlist a researcher, which is
+    # the durable fix for intermittent blocking.
+    identify_as: str = ""
+
     request_timeout: float = 30.0
 
 

@@ -49,6 +49,50 @@ Output lands in `findings/`:
 | `findings.json` | Machine-readable results |
 | `evidence.json` | Full request/response transcript (tokens redacted) |
 
+### When introspection is blocked (the common case)
+
+Production APIs usually block introspection, and edge WAFs often block the
+introspection *query* specifically — `__schema` is a well-known signature. The
+toolkit tells these apart: an edge block reports `BLOCKED AT THE EDGE`, a real
+refusal reports `introspection DISABLED by the server`. Only the second says
+anything about the API.
+
+Either way you don't need a schema. Record the app instead:
+
+1. Open `app.sola.security`, log in as **A**, DevTools → **Network**, filter
+   **Fetch/XHR**.
+2. Click into **detail views** — open a policy, a report, a member. List pages
+   alone carry no id arguments and produce nothing to test.
+3. Right-click the request list → **Save all as HAR with content** → `a.har`.
+4. Repeat as **B** → `b.har`.
+
+```bash
+python3 run.py --har-a a.har --har-b b.har --tag your-h1-handle
+```
+
+Captured operations are *better* than a schema here: they are real documents
+the app itself issues, so they validate against the live schema by
+construction, they carry the exact argument values the app sent (replayed
+verbatim, with only the id under test swapped), and they already pass whatever
+the WAF enforces. The HAR doubles as the harvest — every id in a capture
+belongs to the account that recorded it.
+
+This is also the seeding step you have to do anyway, so it costs nothing extra.
+
+### Dealing with the WAF
+
+Sola sits behind a WAF that blocks intermittently (`Task Failed successfully:
+access denied`). The toolkit retries edge blocks with backoff and never retries
+a genuine application denial — conflating the two would turn infrastructure
+noise into phantom findings.
+
+If blocking persists, the durable fix is to be allowlisted rather than to work
+around it. Pass `--tag <your-h1-handle>` so every request carries
+`X-Bug-Bounty`, making your traffic attributable, and ask the program to
+allowlist you — the WAF message itself invites this ("contact support with a
+full curl request"). Check the program's policy on VPNs and proxies before
+relying on one; some programs require testing from an identifiable address.
+
 ### Before the first run
 
 Seed **both** accounts with data through the UI — a policy, an integration, a
@@ -161,17 +205,20 @@ solakit/
   recon.py          schema -> ranked IDOR candidates + runnable documents
   harvest.py        collect identifiers each account legitimately owns
   idor.py           cross-account engine with control tests
+  harfile.py        HAR / captured traffic -> candidates (no schema needed)
   report.py         Markdown + JSON output
 tests/
   mock_server.py    mock multi-tenant API (one vulnerable, one secure,
                     one id-ignoring resolver)
   test_engine.py    end-to-end assertions
+  test_har.py       capture ingestion + edge-block detection
 ```
 
 ## Tests
 
 ```bash
-python3 tests/test_engine.py
+python3 tests/test_engine.py   # schema path, engine classification, safety
+python3 tests/test_har.py      # captured-traffic path, WAF/edge detection
 ```
 
 Runs the full pipeline against the mock API offline and asserts the engine

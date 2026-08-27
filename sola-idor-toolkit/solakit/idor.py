@@ -151,10 +151,14 @@ class IdorEngine:
         tenant_override: str | None = None,
         note: str = "",
     ) -> GqlResult:
-        variables: dict[str, Any] = {id_arg: id_value}
-        # Required non-id args get a benign placeholder so the document
-        # validates. Where this is wrong the baseline simply fails and the
-        # candidate is skipped - it never produces a false finding.
+        # Start from the argument values the application itself sent, where we
+        # captured them - that keeps every other variable realistic and only
+        # the object reference under test changes.
+        variables: dict[str, Any] = dict(candidate.default_variables)
+        variables[id_arg] = id_value
+        # Anything still unset gets a placeholder so the document validates.
+        # Where that is wrong the baseline simply fails and the candidate is
+        # skipped - it never produces a false finding.
         for vname in candidate.var_names:
             variables.setdefault(vname, None)
         return self.client.execute(

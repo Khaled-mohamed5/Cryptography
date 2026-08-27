@@ -128,6 +128,32 @@ class Exchange:
 
 _SENSITIVE_HEADERS = {"authorization", "cookie", "set-cookie", "x-api-key"}
 
+_EDGE_BLOCK_NEEDLES = (
+    "waf", "blocked by", "access denied", "request blocked",
+    "forbidden by", "security rules", "cloudfront", "akamai", "incapsula",
+)
+
+
+def looks_like_edge_block(status: int | None, body: object) -> bool:
+    """Distinguish an edge/WAF refusal from the application's own 403.
+
+    An application denial is a considered authorization decision and must be
+    reported as-is. An edge block never reached the application at all, and
+    says nothing about authorization - conflating the two turns infrastructure
+    noise into phantom security findings.
+    """
+    if status not in (401, 403, 405, 406, 429, 503):
+        return False
+    if isinstance(body, dict):
+        # A GraphQL error envelope means the application answered.
+        if "errors" in body or "data" in body:
+            return False
+        text = str(body.get("message", "")) + " " + str(body.get("error", ""))
+    else:
+        text = str(body or "")
+    low = text.lower()
+    return status in (429, 503) or any(n in low for n in _EDGE_BLOCK_NEEDLES)
+
 
 def _redact_headers(headers: dict[str, str], redact: bool) -> dict[str, str]:
     if not redact:
@@ -169,6 +195,9 @@ class ScopedSession:
         headers = dict(headers or {})
         headers.setdefault("User-Agent", "SolaIDORKit/1.0 (HackerOne security testing)")
         headers.setdefault("Accept", "application/json")
+        if self.safety.identify_as:
+            headers.setdefault("X-Bug-Bounty", self.safety.identify_as)
+            headers.setdefault("X-HackerOne-Research", self.safety.identify_as)
 
         self._limiter.wait()
         with self._lock:
@@ -180,6 +209,7 @@ class ScopedSession:
         resp_headers: dict[str, str] = {}
         resp_body: Any = None
         error: str | None = None
+        blocked_attempts = 0
 
         try:
             resp = self._session.request(
@@ -199,6 +229,26 @@ class ScopedSession:
                     resp_body = resp.text[:20000]
             else:
                 resp_body = resp.text[:20000]
+            # An edge block is transient often enough to be worth retrying;
+            # a genuine application response is never retried.
+            while (
+                looks_like_edge_block(status, resp_body)
+                and blocked_attempts < self.safety.waf_retries
+            ):
+                blocked_attempts += 1
+                time.sleep(self.safety.waf_backoff * blocked_attempts)
+                resp = self._session.request(
+                    method, url, headers=headers, json=json_body,
+                    timeout=self.safety.request_timeout,
+                )
+                status = resp.status_code
+                resp_headers = dict(resp.headers)
+                try:
+                    resp_body = resp.json()
+                except ValueError:
+                    resp_body = resp.text[:20000]
+            if blocked_attempts:
+                note = (note + " " if note else "") + f"[{blocked_attempts} WAF retry]"
             self._consecutive_errors = 0
         except requests.RequestException as exc:
             error = f"{type(exc).__name__}: {exc}"

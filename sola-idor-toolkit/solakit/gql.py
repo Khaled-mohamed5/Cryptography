@@ -121,9 +121,21 @@ class GraphQLClient:
             schema = res.data["__schema"]
             n_types = len(schema.get("types") or [])
             return schema, f"introspection ENABLED ({n_types} types exposed)"
+        from .http import looks_like_edge_block
+        body = res.exchange.response_body
+        if looks_like_edge_block(res.status, body):
+            return None, (
+                f"BLOCKED AT THE EDGE (HTTP {res.status}) - the request never "
+                f"reached the GraphQL server, so this says nothing about "
+                f"whether introspection is enabled. Body: {str(body)[:200]}"
+            )
+        if res.status == 200 and res.errors:
+            return None, (
+                f"introspection DISABLED by the server: {res.error_text[:200]}"
+            )
         return None, (
-            f"introspection disabled or blocked "
-            f"(HTTP {res.status}): {res.error_text[:200]}"
+            f"introspection unavailable (HTTP {res.status}): "
+            f"{res.error_text[:200] or str(body)[:200]}"
         )
 
     def probe_field_suggestions(self, account: Account, guess: str = "zzzq") -> list[str]:

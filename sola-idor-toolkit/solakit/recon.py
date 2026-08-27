@@ -81,6 +81,11 @@ class Candidate:
     severity: str
     document: str = ""          # runnable GraphQL document
     var_names: list[str] = field(default_factory=list)
+    # Real variable values observed in captured traffic. Replaying a captured
+    # operation with its own recorded arguments (overriding only the id under
+    # test) is far more likely to produce a valid request than guessing.
+    default_variables: dict = field(default_factory=dict)
+    source: str = "schema"      # "schema" | "captured"
 
     @property
     def key(self) -> str:
