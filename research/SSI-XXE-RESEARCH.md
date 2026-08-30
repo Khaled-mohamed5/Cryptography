@@ -244,9 +244,15 @@ template engine hold?"
 (`AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:L/A:L`). Titled by the CNA "Improper Neutralization of
 Server-Side Includes (SSI) vulnerability in WBSAirback".
 
+> **A full lab and deep-dive for this CVE lives in
+> [`research/cve-2024-3788/`](cve-2024-3788/README.md)** — a working reproduction of the
+> vulnerability class on Apache httpd, with the vulnerable and fixed handlers one line apart.
+
 **Root cause.** The `License` field reachable through `/admin/CDPUsers` is stored and later
 rendered into a page that the server SSI-parses, with no neutralisation of the `<!--#`
-sequence.
+sequence. The defect is in the *application*, not in `mod_include` or in the decision to
+enable SSI — the parser cannot distinguish a directive the developer wrote from one an
+attacker stored.
 
 **Exploit scenario.** A high-privilege but non-root operator (note `PR:H` — this is an
 *insider / post-compromise* escalation, not a pre-auth bug) pastes

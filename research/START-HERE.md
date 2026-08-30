@@ -8,10 +8,21 @@ Everything for the five assignment topics, plus a runnable lab for CVE-2019-0221
 |---|---|
 | `SSI-XXE-RESEARCH.md` | **The main report.** All five topics: 8 SSI CVEs, the SSI directives, XXE source-code reads, reading files without `file://`, and blind XXE. |
 | `ssi-xxe.html` | The same report as a web page — open it in a browser. |
-| `cve-2019-0221/` | **The runnable CVE lab.** Start with its `README.md`. |
+| `cve-2024-3788/` | **SSI injection lab (CWE-97).** Stored input becomes an `#exec` directive and the server runs it. Pure SSI. |
+| `cve-2019-0221/` | **Tomcat SSI `printenv` lab.** An XSS bug inside an SSI command. |
 | `lab/` | The XXE harnesses that produced the `[verified]` results in the report. |
 
-## Just want to see the CVE demo?
+## Just want to see SSI injection execute a command?
+
+```sh
+cd cve-2024-3788
+chmod +x *.sh
+./setup.sh && ./run.sh start && ./exploit.sh
+```
+
+Needs Apache with `mod_include` (`sudo apt install apache2`) plus `python3` and `curl`.
+
+## The Tomcat CVE demo
 
 ```sh
 cd cve-2019-0221
