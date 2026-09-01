@@ -82,6 +82,56 @@ curl -s https://acenpw.att.com/wp-admin/install.php | head -40
 - Renders a **form asking for Site Title / Username / Password** → stop testing immediately,
   do not complete the installation, screenshot and record video, and report as Critical.
 
+## RESOLVED — install.php is benign
+
+Body confirmed:
+
+```html
+<h1>Already Installed</h1>
+<p>You appear to have already installed WordPress.
+   To reinstall please clear your old database tables first.</p>
+```
+
+WordPress is configured and the installer refuses to run. **Not reportable.** This matches
+the prediction from the 409 on `setup-config.php` and the 720-byte length. Do not submit
+"install.php is publicly reachable" — every mature program closes that as informative.
+
+## Two details worth extracting from that response
+
+### WordPress core version 6.4.10 is disclosed
+
+```
+href='.../wp-includes/css/dashicons.min.css?ver=6.4.10'
+```
+
+Version disclosure alone is **not reportable** — low impact, no exploit path, excluded by
+policy. Its value is as an input to the plugin/core CVE search.
+
+The 6.4 branch is old, but the `.10` suffix means core security backports are being applied
+(WP Engine does this automatically). What matters is whether 6.4.10 is the *current* 6.4.x
+backport:
+
+- Check https://wordpress.org/download/releases/ for the highest 6.4.x release.
+- **6.4.10 is current** → no core CVE to report. Move to plugins.
+- **A higher 6.4.x exists** → read that release's security notes for unpatched core issues.
+  Note the policy rule: *"0-day vulnerabilities less than 30/60/90 days from patch release
+  are ineligible for bounty"* — a fix released very recently does not qualify.
+
+Do not report a version number as a finding. Report a *specific vulnerability* that the
+version is provably subject to, with a working PoC.
+
+### Akamai Bot Manager is actively fingerprinting you
+
+```html
+<link rel="stylesheet" href="/r2JzbL/8Zr_/_Lsx/QuVA/JVXMxF/pLOJS9/XllzAQ/Yj0LBhZ/DWCFZ">
+<script src="/r2JzbL/8Zr_/_Lsx/QuVA/JVXMxF/pLOJS9/XllzAQ/VTQ5fQx/sNU4p" async defer></script>
+<div id="sec-overlay" style="display:none;"><div id="sec-container"></div></div>
+```
+
+Randomised path segments plus `sec-overlay` / `sec-container` are the Akamai Bot Manager
+signature. Your traffic is being actively profiled, not merely rate-limited. This makes the
+scanning-volume point below concrete rather than theoretical.
+
 ## Scanning volume — a real risk to your program standing
 
 Roughly 11,000 requests in nine minutes at 25 threads against AT&T production infrastructure.
