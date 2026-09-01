@@ -227,3 +227,65 @@ Generalisable from this run:
    an 11,000-request scan into a few hundred targeted ones.
 6. **Scanner "hits" are hypotheses, not results.** dirsearch reported several hundred; zero
    survived triage. That ratio is normal. The skill being paid for is the triage, not the scan.
+
+---
+
+## Part E — what has NOT been tested
+
+The assessment so far is entirely reconnaissance. Path brute-forcing answers one question:
+*does a file exist at this name?* It does not test application behaviour, which is where
+most vulnerabilities live.
+
+### Closed (do not revisit)
+
+Subdomain takeover · open redirect · exposed config, backups, `.git` · directory listing ·
+user enumeration · installer takeover · core version
+
+### Untested — the actual attack surface
+
+**E1. Application functionality — the largest gap**
+
+Nobody has looked at what this site *does*. Start here:
+
+```bash
+# What is actually served?
+curl -s https://acenpw.att.com/ | head -100
+
+# Every link and form on the page
+curl -s https://acenpw.att.com/ | grep -oE '(href|action)="[^"]*"' | sort -u
+
+# API endpoints hidden in the JavaScript
+curl -s https://acenpw.att.com/ | grep -oE 'src="[^"]*\.js"' | sort -u
+# then fetch each and grep for: /api/, ajax, fetch(, XMLHttpRequest, endpoint
+```
+
+Then map every input: URL parameters, form fields, search boxes, headers, cookies. Each is a
+candidate for injection, access-control failure, or IDOR. **This is what testing means.**
+
+**E2. Plugin and theme CVEs**
+
+```bash
+curl -s https://acenpw.att.com/ | grep -oE 'wp-content/(plugins|themes)/[^/"?]+' | sort -u
+```
+
+Pull names from the live HTML rather than brute-forcing — quieter under Bot Manager and more
+accurate. Then `readme.txt` → `Stable tag:` → WPScan database. Look for **unauthenticated**
+SQLi, arbitrary file upload, or RCE.
+
+**E3. `acetng.att.com`**
+
+An entirely separate host, discovered but never assessed. Same scope rules apply.
+
+**E4. Authenticated surface**
+
+If registration or login exists, an authenticated session opens IDOR, privilege escalation,
+and access-control testing — none of which is reachable unauthenticated.
+
+### Expectation setting
+
+This program has ~1,587 resolved reports and has been running since 2019. It is heavily
+tested. Unauthenticated low-hanging fruit on a non-Focus, WAF-fronted, managed-hosting asset
+is genuinely unlikely.
+
+Finding nothing on a given host is the normal outcome, not a failure. The response is to
+change target or change technique — not to lower the bar for what counts as a finding.
