@@ -147,3 +147,14 @@ Distribute that configuration to all CI images and developer environments.
 
 No packages were registered or published. No AT&T system was authenticated to, modified, or
 accessed beyond publicly served static files.
+
+## Demonstration
+
+I have deliberately not registered the `@att-bit` scope or published any package under it.
+Doing so would execute code on AT&T build infrastructure, which falls under the program's
+exclusion of attacks against AT&T infrastructure, and would take place on the public npm
+registry rather than on an in-scope AT&T asset.
+
+If the security team would like this demonstrated further, please advise how you would like to
+proceed. Note that registering the scope is also the remediation, so AT&T claiming it directly
+both resolves the issue and removes any need for a third-party demonstration.
