@@ -59,8 +59,13 @@ curl -s -i https://agsdesktop.att.com/broker/xml -X POST \
   | grep -i 'set-cookie'
 ```
 
-Any `SameSite=None` on a session-bearing cookie revives this as a real Medium/High. Otherwise
-the finding is defence-in-depth only, and better left unfiled.
+**Checked — no SameSite=None cookie exists.** The only cookie set on this host is:
+
+```
+Set-Cookie: ACCESSPOINTSESSIONID=e55952ef-...; path=/; secure; HTTPOnly; SameSite=Lax
+```
+
+The revival condition does not hold. This finding is defence-in-depth only. **Closed, not filed.**
 
 ## Also closed on this host
 
