@@ -1,5 +1,16 @@
 # What to actually test on acenpw.att.com
 
+> **Status after the dirsearch run (see `03-dirsearch-triage.md`)**
+>
+> - ~~Open redirect~~ — **ruled out.** The 302s go to a hardcoded `acetng.att.com`,
+>   not an attacker-controlled destination.
+> - ~~Exposed config / backups / `.git`~~ — **ruled out.** All 403 at the Akamai WAF.
+> - ~~User enumeration~~ — **ruled out.** `/wp-json/` returns 401.
+> - ~~Directory listing~~ — **ruled out.** `/wp-content/` returns a 20-byte stub.
+> - **Open:** `/wp-admin/install.php` returned 200 — verify the body, see triage doc.
+> - **Open:** plugin CVE enumeration — not covered by that wordlist. This is now the
+>   main remaining path, item 1 below.
+
 Run these from **your own IP**, not cloud infrastructure. AT&T needs to attribute the
 traffic to you. Keep request rates low — the policy forbids degrading availability, and
 hammering an Akamai-fronted host will get you rate-limited or banned before it gets you a bounty.
