@@ -1,0 +1,10 @@
+# CipherHunt runtime state
+.cipherhunt_save.json
+lair/
+
+# Java build output
+*.class
+
+# Python
+__pycache__/
+*.pyc
