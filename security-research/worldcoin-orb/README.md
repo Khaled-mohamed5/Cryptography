@@ -25,6 +25,10 @@ public sources on 2026-09-03.
 ORB-01 is the one worth submitting. It has a runnable proof of concept in
 [`poc/`](poc/) that verifies against the real `orb-update-agent-core` code.
 
+A paste-ready HackerOne write-up of ORB-01 is in
+[`HACKERONE-SUBMISSION.md`](HACKERONE-SUBMISSION.md). Attach
+`poc/poc_signature_scope.rs` and `poc/expected-output.txt` to the report.
+
 ## Reproducing the PoC
 
 ```sh
