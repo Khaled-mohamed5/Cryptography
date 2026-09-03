@@ -1,0 +1,10 @@
+{
+  "name": "@acme-corp/ui-widget",
+  "version": "9.9.9",
+  "description": "Demonstration package occupying an unclaimed scope",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node postinstall.js"
+  }
+}

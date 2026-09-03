@@ -1,0 +1,7 @@
+{
+  "name": "@acme-corp/ui-widget",
+  "version": "1.0.0",
+  "description": "Internal design-system component (private registry copy)",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}
