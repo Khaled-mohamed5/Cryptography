@@ -5,7 +5,7 @@
 | **Title** | Unauthenticated QR codes reset an Orb's Wi-Fi configuration and move it onto an attacker-controlled network |
 | **Asset** | `https://github.com/worldcoin/orb-core` (Primary Asset, Critical) — also affects `worldcoin/orb-software` |
 | **Weakness** | CWE-306 Missing Authentication for Critical Function |
-| **Severity** | Medium/High — see *Severity* below |
+| **Severity** | `CVSS:4.0/AV:P/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:L/SI:L/SA:N` — see *Severity* |
 | **Attachments** | `step1-magic-reset.png`, `step2-attacker-wifi.png`, `poc-orb06/` (source) |
 
 ---
@@ -145,9 +145,28 @@ I want to be straightforward about the one judgement call here: your policy excl
 
 ## Severity
 
-`CVSS:3.1/AV:P/AC:L/PR:N/UI:N/S:C/C:L/I:H/A:H` = **6.9 Medium**, taking `AV:P` for the need to be in front of the device.
+```
+CVSS:4.0/AV:P/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:L/SI:L/SA:N
+```
 
-If presenting a QR to a public kiosk's scanner is treated as adjacent rather than physical (`AV:A`), the same vector scores **8.8 High**. You score on CVSS 4.0 and business impact, so I will defer to your rating.
+Two notes on how I scored this.
+
+**Availability is deliberately scored at None.** Wiping the network configuration
+does cause an availability impact, but your policy excludes device DoS, and an
+outage is not what I am reporting. The finding is the unauthenticated
+*redirection* of the device onto an attacker-chosen network — an access-control
+failure. I have left `VA` and `SA` at `N` so the score reflects only that.
+
+**`AV:P` is the conservative choice.** CVSS 4.0 defines Physical as requiring the
+attacker to "physically touch or manipulate" the component, and the attacker
+never touches the Orb — the QR scanner is the device's designed input channel,
+which arguably makes `AV:L` ("accessing the target system locally, e.g. keyboard,
+console") the better fit and raises the score. Optical proximity inputs are not
+cleanly covered by either. I will defer to your rating.
+
+Confidentiality is `L` rather than `H` because backend traffic is TLS; the
+attacker sees DNS and traffic metadata, not protected content. Integrity is `H`
+because the attacker fully controls which network the device joins.
 
 ## Suggested remediation
 

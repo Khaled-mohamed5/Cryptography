@@ -1,6 +1,8 @@
 # ORB-06 — Unauthenticated QR codes reset an Orb's network config and move it onto an attacker's Wi-Fi
 
-**Severity:** High
+**Severity:** `CVSS:4.0/AV:P/AC:L/AT:N/PR:N/UI:N/VC:L/VI:H/VA:N/SC:L/SI:L/SA:N`
+(VA/SA deliberately scored None — the config wipe is an availability effect the
+program excludes as DoS, and the reported issue is the network redirection.)
 **Assets:** `worldcoin/orb-core` (Primary, Critical), `worldcoin/orb-software` (Primary, Critical)
 **Commits:** orb-core `9c8e1af`, orb-software `2b4f54dd31ec72b8cafd4d16f5906f8b95b389f3`
 **CWE:** CWE-306 (Missing Authentication for Critical Function), CWE-862 (Missing Authorization)
