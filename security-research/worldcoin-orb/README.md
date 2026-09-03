@@ -63,6 +63,14 @@ cargo test -p orb-update-agent-core --test poc_signature_scope -- --nocapture
 
 Expected output is in [`poc/expected-output.txt`](poc/expected-output.txt).
 
+## Coverage
+
+[`COVERAGE.md`](COVERAGE.md) records what was examined and found sound — the
+production surface (only ten crates ship), every attacker-reachable QR and
+network input, the firmware DFU/UART bounds, and the crypto that is correctly
+implemented. It also lists five hardening observations that are real but not
+worth a bounty submission.
+
 ## Scope note
 
 Only the source repositories listed above were reviewed. No testing was
