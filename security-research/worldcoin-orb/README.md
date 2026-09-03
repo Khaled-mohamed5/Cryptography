@@ -23,11 +23,18 @@ public sources on 2026-09-03.
 | [ORB-05](findings/ORB-05-secure-element-hygiene.md) | Memory-handling hygiene issues in `orb-secure-element.c` | Informational |
 | [ORB-06](findings/ORB-06-unauthenticated-magic-qr-network-takeover.md) | Unauthenticated QR codes reset an Orb's Wi-Fi config and move it onto an attacker's network | **High** |
 
-**ORB-06 is the one to submit.** It needs no assumed compromise, no MITM and no
-secret, so it survives the program's exclusion list — see
-[`ELIGIBILITY-ASSESSMENT.md`](ELIGIBILITY-ASSESSMENT.md). Paste-ready write-up:
-[`HACKERONE-SUBMISSION-ORB-06.md`](HACKERONE-SUBMISSION-ORB-06.md); attach the
-two QR images and the crate in [`poc-orb06/`](poc-orb06/).
+> **Outcome: ORB-06 was submitted and closed as a duplicate of an existing
+> Informative report.** TFH already knew about the unauthenticated magic QR and
+> does not treat it as a vulnerability — consistent with a threat model in which
+> physical proximity to operator equipment is trusted. The technical analysis
+> below stands; it simply was not novel, and the behaviour is accepted by design.
+> See [`OUTCOME.md`](OUTCOME.md) for what that implies for further work here.
+
+ORB-06 was the strongest finding: no assumed compromise, no MITM, no secret, so
+it cleared the program's exclusion list — see
+[`ELIGIBILITY-ASSESSMENT.md`](ELIGIBILITY-ASSESSMENT.md). Write-up:
+[`HACKERONE-SUBMISSION-ORB-06.md`](HACKERONE-SUBMISSION-ORB-06.md); PoC and QR
+images in [`poc-orb06/`](poc-orb06/).
 
 **ORB-01 should not be submitted as a bounty claim.** The defect is real and the
 PoC in [`poc/`](poc/) runs against the real `orb-update-agent-core` code, but
