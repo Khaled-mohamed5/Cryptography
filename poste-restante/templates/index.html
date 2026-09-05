@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>POSTE RESTANTE // dead-drop station</title>
+    <link rel="stylesheet" href="/static/station.css">
+</head>
+
+<body>
+    <div class="class-bar"><span>TOP SECRET // COURIER EYES ONLY // HANDLE VIA DEAD-DROP CHANNELS</span></div>
+
+    <div class="wrap">
+        <header>
+            <div class="kicker">Station&nbsp;&Delta; · anonymous relay</div>
+            <h1>POSTE&nbsp;<b>RESTANTE</b></h1>
+            <p class="tagline">A blind dead-drop board. Leave a message, dress the envelope in your own cipher, and
+                never meet the courier.</p>
+            <div class="statusline">
+                <span><span class="dot"></span><b>CHANNEL SECURE</b></span>
+                <span>OPERATOR&nbsp; <span class="redact">REDACTED</span></span>
+                <span>GRID&nbsp; <b>47.2N&nbsp;08.5E</b></span>
+                <span>CIPHER&nbsp; <b>OTP-∆</b></span>
+            </div>
+        </header>
+
+        <section class="panel d1">
+            <div class="panel-head">
+                <h2><span>&#9633;</span> Compose a drop</h2>
+                <span class="ref">FORM&nbsp;DD-7 · MANIFEST</span>
+            </div>
+            {{{notices}}}
+            <form method="post" action="/post">
+                <input type="hidden" name="_csrf" value="{{csrf}}">
+                <div class="field">
+                    <label class="lab" for="f-title">Designation</label>
+                    <input id="f-title" name="title" type="text" placeholder="short cover name for the drop"
+                        maxlength="80" value="{{title_value}}" required>
+                </div>
+                <div class="field">
+                    <label class="lab" for="f-body">Message <small>limited markup allowed, sanitized</small></label>
+                    <textarea id="f-body" name="body" rows="4" maxlength="20000"
+                        placeholder="your message to the void...">{{body_value}}</textarea>
+                </div>
+                <div class="field">
+                    <label class="lab" for="f-css">Envelope cipher <small>optional CSS</small></label>
+                    <textarea id="f-css" name="css" rows="4" maxlength="8000"
+                        placeholder="body{background:#111;color:#eee}">{{css_value}}</textarea>
+                </div>
+                <button class="stamp" type="submit">&#9873; Leave the drop</button>
+            </form>
+        </section>
+
+        <section class="panel d2">
+            <div class="panel-head">
+                <h2><span>&#9636;</span> Your drops</h2>
+                <span class="ref">PICKUP LEDGER · EYES: OWNER</span>
+            </div>
+            <ul class="ledger">
+                {{{ledger}}}
+            </ul>
+        </section>
+
+        <footer>
+            <span>Something off? Open a drop and <b>Flag for a courier</b>.</span>
+            <span>COURIER Uses · <b>{{agent}}</b></span>
+            <span>FILE&nbsp;#DD · <span class="redact">{{handle}}</span></span>
+        </footer>
+    </div>
+</body>
+
+</html>

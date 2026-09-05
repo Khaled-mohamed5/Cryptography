@@ -1,0 +1,10 @@
+# The station's SQLite database and HMAC signing key. Committing either would
+# hand over every drop and let anyone forge a courier handle.
+data/
+*.db
+*.db-wal
+*.db-shm
+secret.key
+
+__pycache__/
+*.pyc

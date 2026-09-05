@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>envelope {{id}}</title>
+    <style>
+        /* station defaults: whatever the courier's cipher does not override */
+        html {
+            color-scheme: dark;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #c8d3e2;
+            background: #0a0d12;
+            overflow-wrap: anywhere;
+        }
+
+        a {
+            color: #f2b04e;
+        }
+
+        pre,
+        code {
+            font-family: inherit;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        table {
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #222b39;
+            padding: 4px 8px;
+        }
+
+        .empty-envelope {
+            color: #66748a;
+            font-style: italic;
+        }
+    </style>
+    <style>{{{envelope_css}}}</style>
+</head>
+
+<body>
+    {{{body_html}}}
+</body>
+
+</html>

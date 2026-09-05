@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{title}} // POSTE RESTANTE</title>
+    <link rel="stylesheet" href="/static/station.css">
+</head>
+
+<body>
+    <div class="class-bar"><span>TOP SECRET // COURIER EYES ONLY // HANDLE VIA DEAD-DROP CHANNELS</span></div>
+
+    <div class="wrap">
+        <header>
+            <a class="backlink" href="/">&larr; back to the counter</a>
+            <div class="kicker">Drop&nbsp;{{idtag}} · {{ownership}}</div>
+            <h1 class="drop-heading">{{title}}</h1>
+            <div class="statusline">
+                <span><span class="{{dotclass}}"></span><b>{{state}}</b></span>
+                <span>LEFT&nbsp; <b>{{created}}</b></span>
+                <span>PICKUPS&nbsp; <b>{{pickups}}</b></span>
+                <span>CIPHER&nbsp; <b>{{cipher}}</b></span>
+            </div>
+        </header>
+
+        <section class="panel d1">
+            <div class="panel-head">
+                <h2><span>&#9633;</span> The envelope</h2>
+                <span class="ref">FORM&nbsp;DD-7 · CONTENTS</span>
+            </div>
+            {{{notices}}}
+            {{{envelope}}}
+        </section>
+
+        <section class="panel d2">
+            <div class="panel-head">
+                <h2><span>&#9634;</span> Flag for a courier</h2>
+                <span class="ref">FORM&nbsp;DD-9 · REPORT</span>
+            </div>
+            {{{flagbox}}}
+        </section>
+
+        <footer>
+            <span>Envelopes are unverified. Nothing here is vouched for by the station.</span>
+            <span>COURIER Uses · <b>{{agent}}</b></span>
+            <span>FILE&nbsp;#DD · <span class="redact">{{handle}}</span></span>
+        </footer>
+    </div>
+</body>
+
+</html>
