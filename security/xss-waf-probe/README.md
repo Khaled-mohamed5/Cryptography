@@ -149,6 +149,55 @@ you a perfect-looking reflection that never fires. For a report, prefer a
 harmless proof (`document.title`, a `console.log`) over `alert(1)`, and
 capture the full request, the response, and the browser evidence together.
 
+## Field notes: Airlock `xss-strict/xss-1.php`
+
+A real run against the playground established the following. Re-derive it for
+your own instance rather than trusting this verbatim — labs differ.
+
+**The WAF denies with `HTTP 303` to an error page, not a 4xx.** Any tool that
+only checks for 4xx will read a block as a normal response. `judge()` treats
+3xx as a block by default; pass `--redirect-ok` if the app itself redirects.
+
+**The input is echoed into three contexts, and only the third is live:**
+
+```
+[0] <textarea name="inject">INPUT</textarea>            display only
+[1] <td class="code">&lt;script&gt; var v = INPUT; ...  escaped source listing
+[2] <td><script type="text/javascript"> var v = INPUT; </script></td>   LIVE
+```
+
+Point 0 is the default measurement point and it is the *wrong* one. Use
+`--point 2` so every verdict is read from the live `<script>` block; the
+`[points differ: …]` note fires whenever the encodings diverge, which is the
+signal that you are measuring the wrong context.
+
+**Point 2 is a bare JavaScript expression slot**, not markup. That reframes the
+whole problem:
+
+- `< > " ' &` are entity-encoded, and **HTML entities are not decoded inside
+  `<script>`** — so `&apos;` stays six literal characters and string literals
+  built with `'` or `"` are unavailable, permanently.
+- Every other character tested came back `RAW`: `` ` `` `/` `\` `=` `(` `)`
+  `[` `]` `{` `}` `;` `:` `+` `-` `.` `,` and space.
+- You do not need the encoded five. The slot already expects an expression,
+  so `alert(1)` needs no breakout at all.
+
+Build strings without quotes — this is the core technique for this context:
+
+| Need | Quote-free form |
+|---|---|
+| a string | `` `alert(1)` `` (backtick), `/alert/.source`, `String.fromCharCode(97,108,101,114,116)` |
+| a call | `alert(1)`, `` alert`1` ``, `(alert)(1)`, `[1].map(alert)` |
+| `eval` | `` [].constructor.constructor(`alert(1)`)() ``, `` Function(`alert(1)`)() `` |
+| concat | `` `ale`+`rt` `` |
+
+`--payload-set js` sweeps 32 such payloads. `--payload-set html` keeps the
+markup corpus for contexts where tag injection is the goal.
+
+**The WAF signatures `\u` escapes.** A bare `\u0061` probe was denied, so
+`\u0061lert(1)` will be too — do not burn requests on identifier-escape
+variants against this ruleset.
+
 ## Files
 
 - `xss_waf_probe.py` — the harness (no dependencies)

