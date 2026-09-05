@@ -44,6 +44,15 @@ class MarkupTests(unittest.TestCase):
             out = sanitize.sanitize_html('<a href="%s">go</a>' % href)
             self.assertNotIn("href", out, "accepted %r" % href)
 
+    def test_rejects_protocol_relative_links(self):
+        # "//evil.test" reads like a path but leaves for another host. Outbound
+        # links are allowed; they just have to name their scheme.
+        out = sanitize.sanitize_html('<a href="//evil.test/phish">bank login</a>')
+        self.assertNotIn("href", out)
+        self.assertNotIn("evil.test", out)
+        # Genuinely relative links still work.
+        self.assertIn('href="/d/abc"', sanitize.sanitize_html('<a href="/d/abc">x</a>'))
+
     def test_keeps_http_links_but_defangs_them(self):
         out = sanitize.sanitize_html('<a href="https://example.test/x">go</a>')
         self.assertIn('href="https://example.test/x"', out)
@@ -197,6 +206,28 @@ class FuzzTests(unittest.TestCase):
             # Sanitizing is a fixed point: re-running it must change nothing.
             self.assertEqual(sanitize.sanitize_html(markup), markup, raw)
             self.assertEqual(sanitize.sanitize_css(cipher), cipher, raw)
+
+
+class CorpusTests(unittest.TestCase):
+    """The red-team corpus, run on every change rather than only on demand."""
+
+    def test_every_payload_is_neutralized(self):
+        import redteam
+        leaked = []
+        for payload, output in redteam.run_offline(redteam.PAYLOADS):
+            passed, problems = redteam.judge(payload, output)
+            if not passed:
+                leaked.append("%s: %s" % (payload.probes, ", ".join(problems)))
+        self.assertEqual(leaked, [], "\n".join(leaked))
+
+    def test_the_corpus_would_notice_a_broken_sanitizer(self):
+        # A corpus that passes against a sanitizer that does nothing is not
+        # testing anything. Verify it actually bites before trusting a green run.
+        import redteam
+        blind = [p for p in redteam.PAYLOADS if not p.must_survive]
+        caught = sum(0 if redteam.judge(p, p.value)[0] else 1 for p in blind)
+        self.assertGreater(caught, len(blind) * 0.8,
+                           "corpus only caught %d/%d raw payloads" % (caught, len(blind)))
 
 
 if __name__ == "__main__":

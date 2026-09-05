@@ -73,6 +73,60 @@ trusted to be complete on its own.
   `style-src` can stay `'self'` without `'unsafe-inline'`. A regression test
   keeps it that way.
 
+## Firing payloads at it
+
+`redteam.py` is the corpus the sanitizers are meant to defeat, kept runnable so
+a change to `sanitize.py` can be checked against it in one command:
+
+```sh
+python3 redteam.py                              # offline, straight at the sanitizers
+python3 redteam.py --url http://127.0.0.1:8080  # end-to-end, through a real station
+python3 redteam.py --kind cipher --show         # one class, printing what survived
+```
+
+86 vectors: script elements and their malformed variants, event handlers,
+`javascript:` split by tabs, newlines, entities and control characters,
+`data:` documents, framing and media tags, credential-harvesting forms, mXSS
+via nested quotes, `url()` in every spelling including comment-split and
+backslash-escaped, `@import`, `@font-face`, `expression()`, `-moz-binding`,
+`behavior`, attribute-selector exfiltration, and four ways to try to break out
+of the `<style>` element the cipher is emitted into.
+
+Six of them are **controls that must survive**: ordinary rich text, a working
+outbound link, a plain cipher, a media query, keyframes. Without those, a
+sanitizer that returned `""` for every input would score a perfect run.
+
+A payload passes when the sanitized output holds no executable surface —
+re-parsed, only allowlisted tags, attributes and schemes remain. Escaped text
+is not a leak: `&lt;script&gt;alert(1)&lt;/script&gt;` contains the substring
+`alert(1)` and is perfectly safe, so every check is structural rather than a
+substring scan.
+
+Against a live station the run trips the board's own rate limits. Those
+payloads are reported as **skipped**, never as passes — a drop the station
+refused because you were posting too fast was never tested. `--wait` paces the
+run to get through all of them.
+
+### The POST payload itself
+
+A drop is an ordinary urlencoded form, so a payload can be delivered with
+nothing but `curl`. The handle cookie must come first, because the CSRF token
+is derived from it:
+
+```sh
+curl -c jar -b jar -s http://127.0.0.1:8080/ |
+    grep -o 'name="_csrf" value="[^"]*"' | sed 's/.*value="//;s/"//' > token
+
+curl -c jar -b jar -i -X POST http://127.0.0.1:8080/post \
+    --data-urlencode "_csrf=$(cat token)" \
+    --data-urlencode 'title=Bench 4' \
+    --data-urlencode 'body=<p>Chalk mark <b>under the third slat</b>.</p>' \
+    --data-urlencode 'css=body{background:#120b06;color:#f2b04e}'
+```
+
+A `303` with a `Location: /d/<id>` means the drop was filed; a `200` means it
+came back with the manifest and an error notice explaining what was refused.
+
 **Abuse.** Any courier can flag a drop, once. `SEAL_THRESHOLD` (3) independent
 reports seal it: strangers get a placeholder and the envelope endpoint returns
 `410 Gone`. The author can still read what they wrote. Reports are stored with

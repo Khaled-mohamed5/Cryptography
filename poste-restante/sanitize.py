@@ -78,6 +78,10 @@ def _safe_url(value):
     if not cleaned:
         return None
     lowered = cleaned.lower()
+    if lowered.startswith("//"):
+        # Protocol-relative: it reads like a path but leaves for another host.
+        # Outbound links are allowed, but they must say so.
+        return None
     if lowered.startswith("#") or lowered.startswith("/"):
         return cleaned if len(cleaned) <= 2048 else None
     if any(lowered.startswith(scheme) for scheme in SAFE_SCHEMES):
