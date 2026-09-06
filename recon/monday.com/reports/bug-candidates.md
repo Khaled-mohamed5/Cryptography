@@ -15,6 +15,44 @@ Informational or Duplicate — the real payoff is BUG-01 to BUG-06.
 
 ---
 
+## Run log
+
+### Run 1 — 2026-09-06 21:12 UTC — INVALID, rate limited
+
+Almost every check returned `429` with a 17-byte body. 17 bytes is exactly
+`error code: 1015\n` — **Cloudflare rate limiting**, not a WAF block (1020) and
+not a ban. The limiter counts the source IP, and a katana crawl of the same host
+shortly beforehand is enough to fill the bucket on its own.
+
+**Nothing in that run tested the application.** Every "no redirect", "no
+reflection", "no methods returned" and "no difference" was the rate limiter
+answering, not monday.com. Do not read results out of it.
+
+Three things were still legible:
+
+| | observation | status |
+|---|---|---|
+| BUG-15 | `strict-transport-security: max-age=31536000; includeSubDomains` — **no `preload`** | Real. Cloudflare sets this at the edge, so it is trustworthy. Makes the cleartext `http://auth.monday.com/...` links (BUG-15) slightly more than cosmetic: a client that has never visited still makes its first request in the clear. Informational-to-Low on its own. |
+| BUG-08 | `view.monday.com`: no token → 200/3881 B, wrong token → 200/3914 B, real token → 200/**6062 B** | Not a bug on this evidence. The host is an SPA that returns 200 regardless; the ~3.9 KB responses are the error shell and the 6 KB one is the real board. The token looks **enforced**. Confirm by diffing the bodies, not the sizes. |
+| BUG-07 | `solution_id=10005560` → 302 while its neighbours were 429 | Almost certainly "redirect to login", which is the normal response. Retest the whole sample in one un-rate-limited run before reading anything into it. |
+
+`server: cloudflare` was the only fingerprint header returned — no `x-powered-by`,
+so BUG-01 still needs a version from the framework chunk.
+
+**Fixed in the script as a result:** a preflight rate-limit check, abort after 3
+consecutive 429s, exponential backoff, response bodies saved to disk so
+size-only results can be inspected, and a default pace of 4 s + jitter. Checks
+that depend on a 200 now say "proved nothing" instead of reporting a false
+negative.
+
+### Run 2 — pending
+
+```bash
+DELAY=8 bash tools/verify.sh 01 02 03      # wait for the 1015 to clear first
+```
+
+---
+
 # TIER A — worth the most if they land
 
 ## BUG-01 — Next.js middleware authorization bypass (CVE-2025-29927)

