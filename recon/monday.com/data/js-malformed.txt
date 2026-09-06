@@ -1,0 +1,8 @@
+https://cdn.monday.com/build/'+n+'
+https://cdn.monday.com/build/login_monday-32f197fc6182a73a05ae.css
+https://monday.com/nhp/_next/static/chunks/%27%29,L=d%28%27%3Cscript%20type=
+https://monday.com/nhp/_next/static/chunks/%5C%27/l/legal/tos/%5C%27
+https://monday.com/nhp/_next/static/chunks/%5C%27/l/privacy/privacy-policy/%5C%27
+https://monday.com/nhp/_next/static/chunks/%5C%5C%22/helpcenter/contact-support%5C%5C%22
+https://monday.com/nhp/_next/static/chunks/'.concat(r,'
+https://monday.com/webflow-scripts/w/$%7Be%7D

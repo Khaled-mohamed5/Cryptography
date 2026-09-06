@@ -1,0 +1,3 @@
+https://monday.com/nhp/_next/static/chunks/58474bfb-679c723d89e8f675.js
+https://monday.com/nhp/_next/static/chunks/framework-355174a933119eba.js
+https://monday.com/nhp/_next/static/chunks/polyfills-42372ed130431b0a.js

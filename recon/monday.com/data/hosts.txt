@@ -1,0 +1,14 @@
+    582 monday.com
+     56 support.monday.com
+     19 auth.monday.com
+      4 community.monday.com
+      3 cdn.monday.com
+      2 www.monday.com
+      2 trust.monday.com
+      2 status.monday.com
+      2 ir.monday.com
+      2 forms.monday.com
+      2 api.monday.com
+      1 workforms.monday.com
+      1 view.monday.com
+      1 developer.monday.com

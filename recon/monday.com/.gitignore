@@ -1,0 +1,3 @@
+# fetched assets and generated live reports stay local
+out/
+reports/live/

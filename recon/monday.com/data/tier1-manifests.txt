@@ -1,0 +1,3 @@
+https://monday.com/nhp/_next/static/f8386b8abfa0c30976f388dea89ed0363ecb1df0/_buildManifest.js
+https://monday.com/nhp/_next/static/f8386b8abfa0c30976f388dea89ed0363ecb1df0/_ssgManifest.js
+https://monday.com/nhp/_next/static/chunks/webpack-b03d4825341567da.js

@@ -1,0 +1,15 @@
+https://api.monday.com/v2/get_schema
+https://api.monday.com/v2/get_schema?format=sdl
+https://monday.com/.well-known/agent-skills/index.json
+https://monday.com/.well-known/api-catalog
+https://monday.com/.well-known/mcp.json
+https://monday.com/.well-known/oauth-authorization-server
+https://monday.com/.well-known/oauth-protected-resource
+https://monday.com/l/wp-json/
+https://monday.com/l/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fmonday.com%2Fl%2Flegal%2Ftos%2F
+https://monday.com/l/wp-json/oembed/1.0/embed?url=https%3A%2F%2Fmonday.com%2Fl%2Flegal%2Ftos%2F&format=xml
+https://monday.com/l/wp-json/wp/v2/posts/34
+https://monday.com/l/xmlrpc.php
+https://monday.com/l/xmlrpc.php?rsd
+https://monday.com/sitemap.xml
+https://monday.com/sitemap_index.xml

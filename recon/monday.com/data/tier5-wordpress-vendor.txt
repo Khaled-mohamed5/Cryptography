@@ -1,0 +1,8 @@
+https://monday.com/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js
+https://monday.com/l/wp-content/cache/min/1/l/wp-content/plugins/sitepress-multilingual-cms/dist/js/browser-redirect/app.js?ver=1785511551
+https://monday.com/l/wp-content/cache/min/1/l/wp-content/themes/airfleet/dist/theme.js?ver=1785511551
+https://monday.com/l/wp-content/cache/min/1/l/wp-content/themes/airfleet/theme/static/main.js?ver=1785511551
+https://monday.com/l/wp-content/plugins/word-2-html/assets/dist/js/user-script.min.js?ver=1.0.59
+https://monday.com/l/wp-includes/js/comment-reply.min.js?ver=6.7.1
+https://monday.com/l/wp-includes/js/jquery/jquery-migrate.min.js?ver=3.4.1
+https://monday.com/l/wp-includes/js/jquery/jquery.min.js?ver=3.7.1

@@ -1,0 +1,9 @@
+https://monday.com/webflow-scripts/query-param-toggles/query-param-toggles.bundle.js
+https://monday.com/webflow-scripts/ab-tests/ab-tests.bundle.js
+https://monday.com/webflow-scripts/w/w.head.bundle.js
+https://monday.com/webflow-scripts/w/w.body.bundle.js
+https://monday.com/homepage-shared-scripts/main/body.bundle.js
+https://cdn.monday.com/build/login_monday-15ee379aee2e89225b5d.js
+https://monday.com/nhp/_next/static/chunks/pages/_app-88fd807ce3ccb80e.js
+https://monday.com/nhp/_next/static/chunks/pages/generated-templates/dynamic-template-page-7103c398cf8af544.js
+https://monday.com/nhp/_next/static/chunks/main-b51c87c8563d2d89.js
