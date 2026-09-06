@@ -9,7 +9,15 @@ tools/    jsrecon.py — fetch + static-analysis toolkit (stdlib Python 3)
 reports/  js-analysis.md — the report
 ```
 
-Start at [`reports/js-analysis.md`](reports/js-analysis.md).
+Start at [`reports/bug-candidates.md`](reports/bug-candidates.md) — 20 bug
+candidates, itemised, each with the command that confirms or kills it.
+[`reports/js-analysis.md`](reports/js-analysis.md) has the surface inventory
+behind them.
+
+**Nothing is verified.** The environment that produced this cannot reach
+monday.com (egress proxy: `x-deny-reason: host_not_allowed`), so no request was
+ever sent to the target. Run `tools/verify.sh` to turn the candidates into
+findings.
 
 ## Data files
 
@@ -32,6 +40,11 @@ Start at [`reports/js-analysis.md`](reports/js-analysis.md).
 ## Usage
 
 ```bash
+# check the 20 bug candidates (passive, rate-limited, bounded samples)
+bash tools/verify.sh              # all
+bash tools/verify.sh 01 06 09     # selected
+
+# download and statically analyse the JS
 python3 tools/jsrecon.py fetch   -i data/js-targets-prioritised.txt -o out --maps
 python3 tools/jsrecon.py analyze -i out -o reports/live --target-domain monday.com
 ```
