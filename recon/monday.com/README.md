@@ -40,6 +40,18 @@ findings.
 ## Usage
 
 ```bash
+# GraphQL — needs an API token (avatar -> Developer -> My Access Tokens)
+export MONDAY_TOKEN='<token>'
+python3 tools/gqlprobe.py whoami        # token check, prints your account/user ids
+python3 tools/gqlprobe.py probe         # which hidden schema fields actually exist
+python3 tools/gqlprobe.py checks        # read-only checks on your own account
+python3 tools/gqlprobe.py mutations     # prints the state-changing tests, sends nothing
+export MONDAY_TOKEN_B='<second account>'
+python3 tools/gqlprobe.py crosstenant --b-account .. --b-user .. --b-board ..
+
+# audit any GraphQL SDL for hidden surface and risky fields
+python3 tools/schema_audit.py verify-out/schema.sdl -o schema-audit
+
 # check the 20 bug candidates (passive, rate-limited, bounded samples)
 bash tools/verify.sh              # all
 bash tools/verify.sh 01 06 09     # selected
