@@ -106,3 +106,39 @@ so rather than flagging a 200 as a win.
 
 Every write it performs goes to account C with account C's own token, to objects
 account C owns.
+
+## The canary upload exposed something that undercuts the sweep
+
+`plant-canary.sh` was run after `canary.txt` was uploaded by hand and visible in
+the UI on item `3209838125`. Two results, both of which matter more than the
+canary itself:
+
+**`item.assets` returned `[]` to the item's own owner.** C's token, C's board,
+C's item, a file plainly present in the interface. So `item.assets` does not
+cover files in an item's Files tab, and the asset id has to be reached another
+way — most likely through the file column's `column_values` entry.
+
+**`add_file_to_item` came back as `Cannot query field ... on type "Mutation"`.**
+That is a documented monday mutation. It should be there.
+
+The second one is the important one, because `Cannot query field` is exactly the
+string this repo's tooling treats as **ABSENT** — "the field is not on the
+server". If the schema is instead being trimmed per token, then ABSENT has meant
+"not in this token's scope" all along, and every hidden-field conclusion drawn
+with these two `me:write` tokens has been drawn through a keyhole. That would
+not invalidate the BOLA results — `boards(ids:)` and `items(ids:)` resolved fine
+and returned `[]`, which is a real authorization decision — but it would
+invalidate the schema-surface work.
+
+`tools/introspect.sh` settles it by counting `Query` and `Mutation` fields for
+each token and comparing. Different counts mean per-token trimming. Same counts
+mean the schema is uniform and `add_file_to_item`'s absence is a versioning
+difference, which the same script then checks by re-introspecting under
+`API-Version` headers from 2023-10 through 2025-04.
+
+It also tries four routes to locate the canary — `item.assets`, `column_values`,
+`board.updates.assets`, `docs` — so the asset id can be recovered without
+guessing.
+
+Nothing here is a vulnerability. It is a correctness problem in this repo's own
+measurements, and it needs resolving before any ABSENT result is quoted anywhere.
