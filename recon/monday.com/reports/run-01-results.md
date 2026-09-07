@@ -384,3 +384,61 @@ The service-user chain remains untestable: neither account has a service user, s
 `service_user_tokens` has no id to be asked for.
 
 **Confirmed findings: still zero.**
+
+## Run 04 — two phases never executed, one produced a crash
+
+```
+phase 1  import_doc_from_html   Cannot query field "id" on type "ImportDocFromHtmlResult"
+phase 2  control  B -> B's own object      SUCCEEDED
+         attack   B -> C's board 5103704617   Internal server error
+phase 3  control  B -> B's own board       Cannot query field "id" on type "SetBoardPermissionResponse"
+         attack   B -> C's board            same
+```
+
+**Phases 1 and 3 never ran.** `Cannot query field "id"` is a validation error —
+GraphQL rejects the document before any resolver executes. `{ id }` was
+hardcoded as the selection set and neither result type has an `id` field, so
+nothing was written and nothing was measured. The one useful consequence is that
+no unintended mutation reached account C.
+
+Fixed: result types are introspected and the selection set is built from their
+actual scalar fields. `import_doc_from_html` selects `docId success`,
+`set_board_permission` selects `board_id`. The read-back regex was also looking
+for `"id"` when the field is `docId`.
+
+### Phase 2 is the one worth reading carefully
+
+The control **succeeded** — `add_subscribers_to_object` works, B can subscribe
+itself to its own object. So a refusal on the attack arm would have been
+meaningful. What came back instead was an **internal server error**, not a
+denial.
+
+That is not a bypass, and it is not evidence of one. C's board id was passed
+where the mutation expects an *object* id, and `objects` is a distinct entity
+type in this schema — the crash is consistent with a type mismatch reaching a
+resolver that does not guard against it. A 500 means the resolver never decided;
+it does not mean it decided in the attacker's favour.
+
+Fixed: phase 2 now asks C's own token for a real object id and attacks that. If
+C has no object, it says so and returns rather than passing a board id and
+reporting the resulting crash as a result.
+
+The crash itself is worth one line in notes — an unhandled exception on a
+cross-account identifier — but on its own it is an availability curiosity, not a
+finding, and submitting a 500 as an authorisation bypass is how a report gets
+closed.
+
+### Enum values recovered
+
+```
+DocKind             private, public, share
+SubscriberKind      OWNER, SUBSCRIBER
+BoardBasicRoleName  assigned_contributor, contributor, editor, viewer
+```
+
+`SubscriberKind.OWNER` is worth noting: if `add_subscribers_to_object` ever does
+answer cross-tenant, adding B as **OWNER** of C's object rather than a subscriber
+is the difference between an access grant and a takeover. The harness uses
+`OWNER` because it is first in the enum, which is the stronger test.
+
+**Confirmed findings: still zero.**

