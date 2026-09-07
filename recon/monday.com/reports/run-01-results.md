@@ -83,3 +83,26 @@ add a dependency column and link two items — and then the sweep has to be re-r
 `assets(ids:)` is still the highest-value case and has not been tested. The one
 attempt was sent with the literal placeholder `<C_ASSET>` in place of an id, so
 the empty response measured nothing. It needs a file uploaded to C first.
+
+## Canary planted (browser upload)
+
+`canary.txt` was uploaded by hand to item `3209838125` on C's board. The upload
+banner reports **0KB**, so the file has no content. That is enough for the
+metadata test — if `assets(ids:)` returns the filename, id or `public_url` to B,
+that is the leak regardless of what the file contains — but it cannot prove an
+unauthenticated *download*, which needs a file with a line of text in it.
+
+`tools/plant-canary.sh` picks that asset up automatically. It queries C's board
+as C first and only uploads if there is nothing there, so re-running it does not
+pile up files. It posts an update if the item has none, takes ground truth from
+C's own token, then runs three checks as B — `assets(ids:)`, `updates(ids:)`,
+`search.updates` — and finally fetches C's `public_url` with no Authorization
+header at all.
+
+On that last one: a signed CDN url serving without credentials is normal and is
+not by itself a finding. It matters only if the url is stable over time, still
+works after the file is deleted, or the signature is guessable. The script says
+so rather than flagging a 200 as a win.
+
+Every write it performs goes to account C with account C's own token, to objects
+account C owns.
