@@ -52,10 +52,8 @@ for t in Query Mutation; do
   comm -23 "$a" "$b" > "$OUT/only-unversioned.$t.txt"
   comm -13 "$a" "$b" > "$OUT/only-versioned.$t.txt"
   x=$(wc -l < "$OUT/only-unversioned.$t.txt"); y=$(wc -l < "$OUT/only-versioned.$t.txt")
-  printf '  %-9s unversioned %3s   %s %3s   ${}only unversioned: %s   only versioned: %s\n' \
-    "$t" "$na" "$BASE_VERSION" "$nb" "$x" "$y" 2>/dev/null \
-  || printf '  %-9s unversioned %3s   %s %3s   only-unversioned %s   only-versioned %s\n' \
-       "$t" "$na" "$BASE_VERSION" "$nb" "$x" "$y"
+  printf '  %-9s unversioned %3s   %-8s %3s   only unversioned: %s   only versioned: %s\n' \
+    "$t" "$na" "$BASE_VERSION" "$nb" "$x" "$y"
 done
 echo
 
@@ -87,7 +85,17 @@ for t in Query Mutation; do
   sleep 1
 done
 
-python3 tools/sigreport.py "$OUT" "$RISK" | tee "$OUT/signatures.txt"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SIGR=""
+for c in "$HERE/sigreport.py" "$HERE/tools/sigreport.py" ./sigreport.py ./tools/sigreport.py; do
+  [ -f "$c" ] && { SIGR="$c"; break; }
+done
+if [ -n "$SIGR" ]; then
+  python3 "$SIGR" "$OUT" "$RISK" | tee "$OUT/signatures.txt"
+else
+  echo "${Y}  sigreport.py not found next to this script - signatures skipped."
+  echo "  Put it in the same directory and re-run, or read $OUT/args.*.json by hand.${N}"
+fi
 
 echo
 echo "${BD}--- how to read this ---${N}"

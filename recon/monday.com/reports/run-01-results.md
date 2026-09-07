@@ -192,3 +192,60 @@ documentation does not describe.
 
 Read signatures before calling anything, and never fire a mutation whose name
 implies deletion or transfer at an object you do not own.
+
+## The gap enumerated: 48 queries and 103 mutations
+
+`schema-diff.sh` ran. The gap is one-directional — **every field in a published
+version is also in the unversioned schema, and 151 fields exist only in the
+unversioned one**. Nothing was removed; a large amount was added.
+
+```
+Query      unversioned  96   2025-04  48    only unversioned: 48   only versioned: 0
+Mutation   unversioned 194   2025-04  91    only unversioned: 103  only versioned: 0
+```
+
+### Read-only, worth probing
+
+`service_user_tokens` and `service_users` are the standouts — a query named for
+returning tokens, reachable with an ordinary customer token. `audit_logs` and
+`audit_event_catalogue` are normally enterprise-admin surfaces.
+`get_app_lifecycle_subscriptions` and `object_types_unique_keys` round out the
+keyword matches; `usage`, `analytics_events`, `tool_events`, `settings`,
+`user_configs`, `departments`, `objects` and `get_directory_resources` are worth
+a look for the same reason.
+
+### Mutations — read before touching
+
+The keyword filter under-reported badly. It caught `set_board_permission`,
+`create_service_user`, `regenerate_service_user_token` and
+`revoke_service_user_tokens`, but these were sorted into "the rest" and are at
+least as serious:
+
+| mutation | what it looks like |
+|---|---|
+| `add_subscribers_to_object` | grants access by adding a subscriber |
+| `execute_integration_block` | SSRF candidate |
+| `import_doc_from_html` | SSRF / stored-XSS candidate |
+| `set_form_password` | removes or sets a password on someone's form |
+| `delete_object`, `archive_object` | destructive |
+| `bulk_delete_items`, `bulk_archive_items` | destructive, in bulk |
+| `undo_action` | reverts an action — whose? |
+| `assign_department_owner` | org-structure change |
+
+`tools/probe_hidden.py` takes the read-only half and runs the established test
+against each: baseline with C's token on C's account, then attack with B's token
+on C's ids. It introspects each field's arguments and return type and builds the
+query from them rather than guessing, so a field needing an argument it cannot
+supply is reported as skipped instead of being silently mis-tested.
+
+It sends queries only. The dangerous mutations are printed with their signatures
+and never executed. Several of them delete, revoke or re-permission things, and
+firing one blind at an identifier is how a test account becomes an incident.
+
+Two bugs in `schema-diff.sh` fixed at the same time: `sigreport.py` was looked
+for at a hardcoded `tools/` path and is now resolved next to the script, and a
+`${}` artifact in the summary line is gone.
+
+**Still nothing confirmed.** A larger unversioned schema is normal GraphQL
+practice and proves nothing on its own. It matters only if one of these fields
+answers B for C's identifiers.
