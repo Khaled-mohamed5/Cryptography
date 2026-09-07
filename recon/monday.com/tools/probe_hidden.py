@@ -179,6 +179,12 @@ def build(field, root="Query"):
 
 
 def classify(body, is_attack):
+    """is_attack must only be True when the query actually carried one of C's ids.
+
+    A field taking no arguments returns the same global data to everyone. Calling
+    that a cross-tenant hit is how run 03 reported object_types_unique_keys as a
+    finding when it is a public app catalogue.
+    """
     low = body.lower()
     if "cannot query field" in low:
         return D + "ABSENT" + N
@@ -262,15 +268,21 @@ def main():
             print("  %-34s %s%s%s" % (field, D, note, N))
             continue
 
+        targeted = any(v in query for v in (C_ACCOUNT, C_USER, C_BOARD, C_ITEM))
         base = post(TOKEN_C, query)
         atk = post(TOKEN_B, query)
-        vb, va = classify(base, False), classify(atk, True)
+        vb, va = classify(base, False), classify(atk, targeted)
 
-        print("  %-34s baseline %-24s attack %s" % (field, vb, va))
+        tag = "" if targeted else D + "  [no C id in query - not a cross-tenant test]" + N
+        print("  %-34s baseline %-24s attack %s%s" % (field, vb, va, tag))
         print("     %s%s%s" % (D, query[:110], N))
         with open("hidden-probe-out/%s.json" % field, "w") as fh:
             json.dump({"query": query, "baseline": base, "attack": atk}, fh, indent=2)
 
+        if targeted and "empty" in vb and "empty" in va:
+            print("     %sboth empty - C holds no data of this kind, so this is"
+                  " inconclusive,%s" % (Y, N))
+            print("     %snot a pass. Give C some of this data and re-run.%s" % (Y, N))
         if "ANSWERED" in va:
             print("     %s%s>>> B got data for C's ids. Read hidden-probe-out/%s.json%s"
                   % (R, B, field, N))
@@ -297,6 +309,10 @@ def main():
     print("\n%s--- result ---%s" % (B, N))
     if findings:
         print("  %s%sB received data for C's ids from: %s%s" % (R, B, ", ".join(findings), N))
+        print("  %sOnly fields whose query carried one of C's identifiers are listed."
+              " A field%s" % (D, N))
+        print("  %staking no arguments returns the same global data to everyone.%s"
+              % (D, N))
         print("  Bodies are in hidden-probe-out/. Confirm C's own identifiers appear in")
         print("  them - an empty envelope is not a leak - then capture both request_ids.")
     else:

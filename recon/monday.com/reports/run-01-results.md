@@ -309,3 +309,78 @@ exist and they answer. Whether they authorise by account is the open question.
 `account_id` and honours it without an authorisation check, it is a cross-tenant
 audit-log read including IP addresses. That is the single most valuable thing
 found so far, and run 03 is the first run that actually tests it.
+
+## Run 03 — one more false positive, and the signatures that matter
+
+`object_types_unique_keys` was reported as a cross-tenant hit. It is not. The
+query it built takes **no arguments at all**:
+
+```graphql
+{ object_types_unique_keys { app_name app_feature_name description object_type_unique_key } }
+```
+
+There is no C identifier in it. Baseline `ok` and attack `ANSWERED` means both
+accounts receive the same global app-registry catalogue. The classifier marked
+any non-empty data on the attack arm as a hit without checking whether the query
+referenced C at all.
+
+Fixed: a probe is only classified as an attack when its query contains one of
+C's identifiers, and every other row is now labelled *not a cross-tenant test*.
+Also added: when a targeted probe comes back empty on **both** arms, that is
+reported as inconclusive rather than a pass — C holding no data of that kind
+cannot demonstrate authorisation either way.
+
+That correction empties most of run 03's table. `usage`, `settings`,
+`user_configs`, `objects`, `insights`, `campaigns`, `segments`, `notifications`
+and `favorites` were all called with nothing but `limit: 5`. They tested whether
+a field returns the caller's own data, not whether it leaks anyone else's.
+
+**`audit_logs` was the only genuine cross-tenant probe in the run**, and it did
+carry C's identifier:
+
+```graphql
+{ audit_logs(limit: 5, page: 1, user_id: "115703279") { logs { timestamp account_id event slug ip_address user_agent ... } } }
+```
+
+B's token, C's user id, empty result. That is a real pass — but an inconclusive
+one, because C's baseline was empty too. C has no audit history to leak. Give C
+some activity and re-run before treating it as cleared.
+
+`departments` denied both arms. `get_directory_resources` returned an internal
+server error to both.
+
+### The mutation signatures
+
+With `args` finally introspected, three are worth testing and the rest are not
+worth the risk:
+
+```
+import_doc_from_html(html: String, workspaceId: ID, kind: DocKind, folderId: ID, title: String)
+add_subscribers_to_object(id: ID, user_ids: ID, kind: SubscriberKind)
+set_board_permission(basic_role_name: BoardBasicRoleName, board_id: ID, cross_product_collaborative: Boolean)
+```
+
+`tools/probe_mutations.py` runs those three and nothing else, gated behind
+`CONFIRM_WRITES=yes`.
+
+Phase 1 is `import_doc_from_html` **against account B only** — it imports markup
+containing constructs a renderer could act on, reads the document back, and
+reports which survived the importer. Nothing else is involved, which makes it the
+safest of the three and the one to run first. Its output is explicit that
+surviving storage is not XSS: the renderer may still escape on the way out, and
+only execution in a browser is the finding.
+
+Phases 2 and 3 are cross-tenant and each runs its control first — B against B's
+own object or board — because a refusal from a mutation that does not work at all
+looks identical to a refusal from an authorisation check, and reporting the
+second when it was the first is how a submission is closed as not-applicable.
+
+Not in the file, at any id: `delete_object`, `archive_object`,
+`bulk_delete_items`, `bulk_archive_items`, `revoke_service_user_tokens`,
+`regenerate_service_user_token`, `undo_action`. Those names appear only in the
+docstring and in the closing message.
+
+The service-user chain remains untestable: neither account has a service user, so
+`service_user_tokens` has no id to be asked for.
+
+**Confirmed findings: still zero.**
