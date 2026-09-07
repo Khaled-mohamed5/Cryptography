@@ -122,20 +122,40 @@ def entropy(s):
     return -sum((c / n) * math.log2(c / n) for c in counts.values()) * n
 
 
-def make_form(token, label, board):
-    """Create a form and return its token, or None."""
-    argstr = sig("create_form") or ""
-    print("  %screate_form(%s)%s" % (D, argstr, N))
-    q = 'mutation { create_form(board_id: "%s") { token id } }' % board
+def workspace_of(token, label):
+    body = post(token, "{ workspaces(limit: 1) { id name } }")
+    m = re.search(r'"id"\s*:\s*"?(\d+)"?', body)
+    if not m:
+        print("  %s%s has no workspace%s" % (Y, label, N))
+        print("     %s%s%s" % (D, body[:200], N))
+        return None
+    return m.group(1)
+
+
+def make_form(token, label, workspace):
+    """Create a form and return its token, or None.
+
+    create_form takes destination_workspace_id, not board_id - it creates a new
+    board with a form attached rather than attaching one to an existing board.
+    Passing board_id is what made the previous run test nothing at all.
+    """
+    if not workspace:
+        return None
+    q = ('mutation { create_form(destination_workspace_id: "%s", '
+         'destination_name: "canary-form-%s") { token id } }' % (workspace, label))
     body = post(token, q)
     if '"errors"' in body:
-        q = 'mutation { create_form(board_id: "%s") { token } }' % board
+        q = ('mutation { create_form(destination_workspace_id: "%s", '
+             'destination_name: "canary-form-%s") { token } }' % (workspace, label))
+        body = post(token, q)
+    if '"errors"' in body:
+        q = 'mutation { create_form(destination_workspace_id: "%s") { token } }' % workspace
         body = post(token, q)
     save("create_form.%s.json" % label, {"query": q, "response": body})
     m = re.search(r'"token"\s*:\s*"([^"]+)"', body)
     if not m:
         print("  %s%s: could not create a form%s" % (Y, label, N))
-        print("     %s%s%s" % (D, body[:220], N))
+        print("     %s%s%s" % (D, body[:260], N))
         return None
     print("  %s%s form token: %s%s" % (G, label, m.group(1), N))
     return m.group(1)
@@ -237,13 +257,17 @@ def main():
         return
 
     print("\n%s=== forms: the surface that is not account-scoped ===%s\n" % (B, N))
-    bb = post(TOKEN_B, "{ boards(limit: 1) { id name } }")
-    b_board = re.search(r'"id"\s*:\s*"?(\d+)"?', bb)
-    if not b_board:
-        print("%saccount B has no board to attach a form to - stopping.%s" % (Y, N))
+    print("  %screate_form(%s)%s\n" % (D, sig("create_form") or "?", N))
+    wb = workspace_of(TOKEN_B, "B")
+    wc = workspace_of(TOKEN_C, "C")
+    tb = make_form(TOKEN_B, "B", wb)
+    tc = make_form(TOKEN_C, "C", wc)
+    if not (tb or tc):
+        print("\n%sNo form was created on either account, so nothing below ran."
+              % Y)
+        print("Read forms-probe-out/create_form.*.json for the argument the mutation"
+              "\nis still missing, and this run proves nothing either way.%s" % N)
         return
-    tb = make_form(TOKEN_B, "B", b_board.group(1))
-    tc = make_form(TOKEN_C, "C", C_BOARD)
 
     analyse(tb, tc)
     read_across(tb, tc)
@@ -253,8 +277,12 @@ def main():
     if hit:
         print("  %s%sCross-account write on a token-identified object.%s" % (R, B, N))
         print("  Bodies in %s/. Verify from C before writing it up." % OUT)
-    else:
+    elif tc:
         print("  %sNothing crossed the boundary here either.%s" % (G, N))
+    else:
+        print("  %sC had no form, so the cross-account case was never exercised."
+              " This is%s" % (Y, N))
+        print("  %snot a pass.%s" % (Y, N))
         print("""
   If this comes back clean too, that is the answer about this target rather than
   a gap in the testing. monday's object lookups are tenant-scoped and the forms
