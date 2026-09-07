@@ -442,3 +442,75 @@ is the difference between an access grant and a takeover. The harness uses
 `OWNER` because it is first in the enum, which is the stronger test.
 
 **Confirmed findings: still zero.**
+
+## Run 05 — three clean passes, and the reason they were passes
+
+All three phases executed properly for the first time.
+
+```
+import_doc_from_html   SUCCEEDED, doc_id 10068166
+  inline script element    stripped
+  event handler attribute  stripped
+  svg event handler        stripped
+  scheme in href           stripped
+  embedded frame           stripped
+
+add_subscribers_to_object   control SUCCEEDED / C has no object, untestable
+
+set_board_permission   control SUCCEEDED on B's own board
+                       attack  Couldn't find Board with 'id'=5103704617   (422)
+```
+
+The importer strips every construct a renderer could act on. That is a working
+sanitiser, not a finding.
+
+The `set_board_permission` result is the one that explains everything before it.
+The control succeeded, so the mutation works and B is capable of changing a board
+role. Against C's board the answer was **`Couldn't find Board with 'id'=...`** —
+not "forbidden". monday resolves objects **within the caller's tenant**, so C's
+board does not exist from B's position at all. There is no authorisation check to
+bypass because the object is never a candidate in the first place.
+
+That is textbook multi-tenancy, and it is why `boards(ids:)`, `items(ids:)`,
+`users(ids:)`, `assets(ids:)`, `aggregate` and the rest all returned `[]` rather
+than a denial. The same design answered every one of them.
+
+## Where this leaves the engagement
+
+Roughly 35 distinct vectors have now been tested: BOLA against boards, items,
+users, assets, updates and dependencies; the 151-field undocumented schema
+surface; audit logs with a foreign user id; app subscriptions and installs;
+cross-tenant permission changes; subscriber grants; and HTML import sanitising.
+Every one held.
+
+Four of the runs were invalid because of defects in this repo's own tooling —
+needles matching an echoed argument, an introspection query omitting `args`,
+hardcoded selection sets failing validation, a classifier calling an
+argument-free query a cross-tenant hit. Those are corrected and documented above,
+and none of them concealed a finding: the fixed runs produced passes too.
+
+**Confirmed findings: zero.** That is a conclusion about the target, not an
+incomplete test.
+
+## The one structurally different surface left
+
+Everything tested so far is identified by an account-scoped id, which is exactly
+what tenant-scoped lookup defeats. The forms subsystem is not:
+
+```
+set_form_password(formToken: String, input: SetFormPasswordInput)
+form(formToken: ...)
+activate_form  deactivate_form  update_form_settings  shorten_form_url
+```
+
+A **token**, not an id. Forms are public-facing by design, so the tenant boundary
+that held everywhere else may not be in the path. `tools/probe_forms.py` creates
+a form on each account, measures both tokens for length, entropy and shared
+structure — a token only matters if it is guessable — then reads C's form as B
+and attempts `set_form_password` on it, with the control on B's own form first.
+
+If that comes back clean, the honest reading is that this target's API is
+hardened and the remaining work belongs on the web application rather than the
+public API: the `/nhp` Next.js routes, the WordPress install under `/l/`, and
+the session-invalidation test in RUNBOOK step 7, which has never been run and
+needs only a browser.
