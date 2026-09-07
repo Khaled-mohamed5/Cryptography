@@ -570,3 +570,38 @@ SHAPE errors this engagement produced.
 
 **Confirmed findings: still zero — but this is the first surface where the
 question is open rather than answered.**
+
+## Run 07 — the forms surface is clean, and the engagement is closed
+
+```
+activate_form           control OK      attack DENIED
+create_form_question    control OK      attack DENIED
+create_form_tag         control OK      attack DENIED
+deactivate_form         control OK      attack DENIED
+set_form_password       control ERROR   attack DENIED
+shorten_form_url        control ERROR   attack DENIED
+update_form             control ERROR   attack DENIED
+update_form_question    control ERROR   attack DENIED
+update_form_settings    control ERROR   attack DENIED
+```
+
+All nine refuse cross-account access. The tool reported the last five as
+"control failed — attack unusable", which understated them.
+
+The two arms **diverged**. The control errored on call shape while the attack
+returned `DENIED`. If ownership were checked after input validation, both arms
+would have produced the same shape error, because both carried the same
+malformed input. They did not — so the attack was refused on **ownership before
+the resolver ever looked at the input**.
+
+That is the correct order and it is the strongest evidence in the engagement: not
+only is the check present, it runs first. Corrected in the tool — a failed
+control paired with a `DENIED` attack now reads as a genuine pass rather than an
+unusable result.
+
+The forms surface was the one place where tenant scoping was absent and an
+explicit check stood alone. It holds.
+
+**`reports/FINAL.md` closes this out.** Forty-four vectors across six runs, zero
+findings, and the one test still outstanding — session invalidation after logout,
+RUNBOOK step 7 — needs a browser and five minutes and has never been run.

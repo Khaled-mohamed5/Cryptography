@@ -240,6 +240,13 @@ def main():
         if cv == "OK" and av == "OK":
             print(line + "  %s%s<-- B wrote to C's form%s" % (R, B, N))
             findings.append(name)
+        elif cv != "OK" and av == "DENIED":
+            # The two arms diverged: the attack was refused on ownership while the
+            # control got past ownership and failed on the call shape. That only
+            # happens if the ownership check runs before input validation, so the
+            # denial is a real authorisation decision and this is a pass - a
+            # stronger one than a matching pair of errors would have been.
+            print(line + "  %sauth checked before input - genuine pass%s" % (G, N))
         elif cv != "OK":
             print(line + "  %scontrol failed - attack unusable%s" % (D, N))
             unusable.append((name, cv))
