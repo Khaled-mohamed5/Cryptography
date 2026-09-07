@@ -2,3 +2,5 @@
 out/
 reports/live/
 verify-out/
+.cookies-*
+*.cookies
