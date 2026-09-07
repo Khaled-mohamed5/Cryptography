@@ -56,6 +56,8 @@ check() {
        && printf '%s' "$BODY" | grep -qF "$needle"; then
     # C's own object name came back in a clean data response, as B
     verdict="${C_R}${C_B}CROSS-TENANT HIT${C_0}"
+  elif printf '%s' "$BODY" | grep -qiE 'internal server error|"status_code":5[0-9][0-9]'; then
+    verdict="${C_Y}500   ${C_0}"
   elif [ "$has_errors" = 1 ]; then
     verdict="${C_G}denied${C_0}"
   elif printf '%s' "$BODY" | grep -qE '"data":\{"[a-z_]*":(null|\[\])'; then
@@ -94,13 +96,17 @@ check "items(ids:) - C's items" \
   "{ items(ids: [$C_ITEMS_ESC]) { id name url board { id name } } }" \
   "$C_ITEM_NAME"
 
+# needle is deliberately empty: this resolver echoes board_id straight back, so
+# matching on the id reports an echo as a leak. Only content in dependency_columns
+# would be a real hit, and that shows up as DATA? for you to read.
 check "dependency_column_config - auth from arguments" \
   "{ dependency_column_config(board_id: \\\"$C_BOARD\\\", account_id: \\\"$C_ACCOUNT\\\", user_id: \\\"$C_USER\\\") { board_id dependency_columns { id account_id board_id data } } }" \
-  "$C_BOARD"
+  ""
 
+# same: boardId in the response is the argument coming back, not evidence of a read
 check "export_graph(boardId:) - C's board structure" \
   "{ export_graph(boardId: \\\"$C_BOARD\\\") { boardId nodeCount edgeCount } }" \
-  "$C_BOARD"
+  ""
 
 check "board_dependencies(board_id:)" \
   "{ board_dependencies(board_id: \\\"$C_BOARD\\\", limit: 2) { total_count items { item_id } } }" \
@@ -121,6 +127,7 @@ check "app_installs(account_id:)" \
   "{ app_installs(app_id: \\\"10000005\\\", account_id: \\\"$C_ACCOUNT\\\") { app_id timestamp app_install_account { id } } }" \
   ""
 
+# users(ids:) does not echo the id on a miss - it returns [] - so the id is a safe needle
 check "users(ids:) - C's user + the deprecated token field" \
   "{ users(ids: [\\\"$C_USER\\\"]) { id name email encrypt_api_token } }" \
   "$C_USER"
@@ -137,6 +144,12 @@ cat <<'MSG'
   DATA?             returned data without C's name in it. Read the body:
                     an empty list is a pass, C's content is a hit.
   ABSENT            field is not in the schema.
+  500               the resolver crashed. NOT a denial - it never decided. Whether
+                    it also crashes for a board id that cannot exist is the question
+                    that decides if this is an oracle. Run discriminate.sh.
+
+  A response that only echoes the id you asked for, with empty lists or zero
+  counts, is NOT a hit. That is the argument coming back, not C's data.
   RATELIMIT         Cloudflare 1015. Every result after this is meaningless.
                     Wait, raise DELAY (DELAY=5 bash run-bc.sh), re-run.
 

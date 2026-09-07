@@ -1,0 +1,85 @@
+# Run 01 — first live cross-tenant sweep
+
+**B (actid 36786355, uid 115702202, `zxczxc-cast`) against C (actid 36786534, uid 115703279, `asdasd371897`).**
+
+Both tokens confirmed by the control arm: each `me` query returned its own
+account, so the pairing is correct and every result below is a genuine
+cross-tenant attempt rather than a self-read.
+
+C's objects: board `5103704617` "asfasf", items `3209838125` "dasf",
+`3209838126` "asfasf", `3209838127` "Task 3". No assets and no updates —
+canaries were not planted before this run.
+
+## Result
+
+**Nothing confirmed. The authorization layer held on every check that could
+have leaked data.**
+
+| check | response | reading |
+|---|---|---|
+| `boards(ids:)` | `{"boards":[]}` | authorized away |
+| `items(ids:)` | `{"items":[]}` | authorized away |
+| `users(ids:)` | `{"users":[]}` | authorized away |
+| `assets(ids:)` | `{"assets":[]}` | untested — C had no asset |
+| `board_dependencies` | `null` | authorized away |
+| `aggregate` | 404 `NOT_FOUND` | denied |
+| `app_subscriptions` | `UserUnauthorizedException` | denied |
+| `app_installs` | 403 `USER_UNAUTHORIZED` | denied |
+| `dependency_column_config` | `{"board_id":"5103704617","dependency_columns":[]}` | **ambiguous** |
+| `export_graph` | `{"boardId":"5103704617","nodeCount":0,"edgeCount":0}` | **ambiguous** |
+| `webhooks` | 500 `INTERNAL_SERVER_ERROR` | **ambiguous** |
+
+Two different denial shapes appear — `[]`/`null` from the board and user
+resolvers, explicit 403/404 from the app and aggregate resolvers. Both are
+correct behaviour; the inconsistency is a style observation, not a finding.
+
+## Correction to the tooling
+
+`run-bc.sh` reported `dependency_column_config` and `export_graph` as
+**CROSS-TENANT HIT**. Both were **false positives, caused by this repo's own
+classifier**, and neither is a finding.
+
+The needle for those two checks was C's board id. Both resolvers echo
+`board_id` straight back into a successful response, so the needle matched the
+argument rather than any data C owns. The guard written for the previous run
+covered an *error* body echoing the id and did not cover a *success* body doing
+the same.
+
+Fixed: the needle is empty for both, so they surface as `DATA?` and the body has
+to be read. The `assets` and `users` checks keep an id needle — those resolvers
+return `[]` on a miss instead of echoing, so the id only appears there when a
+record was actually resolved.
+
+Also fixed: a 500 was being reported as `denied`. A crash is not a denial — the
+resolver never reached a decision — so it now has its own verdict.
+
+## The three ambiguous cases
+
+All three returned something other than a clean denial for a board B cannot
+read. That is worth one probe each, and `tools/discriminate.sh` runs it: each
+query goes out four ways — C's token on C's board (ground truth), B's token on
+C's board (the attempt), B's token on a 14-digit impossible board id (echo
+control), and B's token on B's own board (proves the field works).
+
+- attempt **==** echo control → the resolver echoes its argument. Nothing here.
+- attempt **==** ground truth → B sees what C sees. Cross-tenant read.
+- attempt **differs from** echo control → B can tell a real foreign board from a
+  fake one. Existence oracle: low severity, usually informational on its own.
+
+The expected outcome for all three is "nothing here". They are being checked
+because a resolver that answers at all for a foreign board id is worth ruling
+out properly rather than assuming.
+
+## Caveat on the two zero-count responses
+
+C's board has three items but no dependency columns and no dependency graph, so
+`dependency_columns: []` and `nodeCount: 0` may simply be the truth. A zero that
+is genuinely zero cannot distinguish an authorization block from an empty
+object. To make either field decisive, C's board needs real dependency data —
+add a dependency column and link two items — and then the sweep has to be re-run.
+
+## Untested
+
+`assets(ids:)` is still the highest-value case and has not been tested. The one
+attempt was sent with the literal placeholder `<C_ASSET>` in place of an id, so
+the empty response measured nothing. It needs a file uploaded to C first.
