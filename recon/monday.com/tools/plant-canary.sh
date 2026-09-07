@@ -47,17 +47,37 @@ C_UPDATE="${C_UPDATE:-$(printf '%s' "$HAVE" | grep -o '"updates":\[{"id":"[0-9]*
 if [ -z "${C_ASSET:-}" ]; then
   echo
   echo "${Y}  no asset found - uploading one${N}"
+  echo "${D}  add_file_to_item does not exist on this schema. The mutations that do are"
+  echo "  add_file_to_column and add_file_to_update, so a file needs a column to live in.${N}"
+
+  # a file column to attach to - reuse one if the board already has it
+  COLS=$(cq "$TOKEN_C" "{ boards(ids: [\\\"$C_BOARD\\\"]) { columns { id title type } } }")
+  FCOL=$(printf '%s' "$COLS" | grep -o '"id":"[^"]*","title":"[^"]*","type":"file"' \
+         | head -1 | sed 's/"id":"//;s/".*//')
+  if [ -z "${FCOL:-}" ]; then
+    echo "${D}  creating a file column on C's board${N}"
+    NC=$(cq "$TOKEN_C" "mutation { create_column(board_id: \\\"$C_BOARD\\\", title: \\\"canary\\\", column_type: file) { id } }")
+    echo "${D}  $NC${N}"
+    FCOL=$(printf '%s' "$NC" | grep -o '"id":"[^"]*"' | head -1 | sed 's/"id":"//;s/"$//')
+  fi
+  if [ -z "${FCOL:-}" ]; then
+    echo "${R}  could not get a file column. Upload by hand instead and pass the id:"
+    echo "  C_ASSET=<id> bash plant-canary.sh${N}"
+    exit 1
+  fi
+  echo "${G}  file column: $FCOL${N}"
+
   TMP="${TMPDIR:-/tmp}/canary-$$.txt"
   printf '%s\n' "$MARK" > "$TMP"
   UP=$(curl -s "$FILE_API" -H "Authorization: $TOKEN_C" --max-time 40 \
-    -F "query=mutation add_file(\$file: File!) { add_file_to_item(item_id: $C_ITEM, file: \$file) { id name url } }" \
+    -F "query=mutation add_file(\$file: File!) { add_file_to_column(item_id: $C_ITEM, column_id: \"$FCOL\", file: \$file) { id name url } }" \
     -F "variables[file]=@$TMP;filename=canary.txt" 2>/dev/null)
   echo "${D}  $UP${N}"
   C_ASSET=$(printf '%s' "$UP" | grep -o '"id":"[0-9]*"' | head -1 | grep -o '[0-9]*')
   if [ -z "${C_ASSET:-}" ]; then
     echo "${R}  upload failed - nothing below can run without an asset id.${N}"
-    echo "${Y}  If the error mentions scope, C's token needs boards:write. Or upload"
-    echo "  by hand and pass the id in:  C_ASSET=<id> bash plant-canary.sh${N}"
+    echo "${Y}  Fastest fix: open canary.txt in the browser on account C. The asset id"
+    echo "  is in the url. Then:  C_ASSET=<id> bash plant-canary.sh${N}"
     exit 1
   fi
 else

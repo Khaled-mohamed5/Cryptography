@@ -142,3 +142,53 @@ guessing.
 
 Nothing here is a vulnerability. It is a correctness problem in this repo's own
 measurements, and it needs resolving before any ABSENT result is quoted anywhere.
+
+## Not scope-filtered — and a 103-field gap between the default and every published version
+
+`introspect.sh` answered the scope question cleanly. Both tokens see an identical
+schema: **96 Query fields, 194 Mutation fields**. No per-token trimming. So
+`Cannot query field` does mean the field is genuinely not served, the earlier
+`ABSENT` verdicts stand, and the concern recorded in the previous section was
+unfounded.
+
+`add_file_to_item` simply does not exist on this schema. The file mutations that
+do are `add_file_to_column` and `add_file_to_update`, so a file needs a column to
+live in — which also explains why the item's Files tab has no `assets` entry.
+`plant-canary.sh` now looks for a file column on C's board, creates one if there
+is none, and uploads through `add_file_to_column`.
+
+The part worth following is the comparison between parts 1 and 3:
+
+| schema | Mutation fields |
+|---|---|
+| no `API-Version` header | **194** |
+| `2023-10` | 91 |
+| `2024-01` | 91 |
+| `2024-10` | 91 |
+| `2025-01` | 91 |
+| `2025-04` | 91 |
+
+Every published version agrees on 91. The unversioned endpoint serves 194.
+**Something over a hundred mutations are reachable with an ordinary customer
+token that no dated version of the API acknowledges**, and the same holds for
+both accounts, so it is not a scope artifact.
+
+This is not a vulnerability as it stands. An unversioned GraphQL endpoint
+normally serves the current development schema, and staging fields there before
+they appear in a dated version is ordinary practice. It becomes a finding only
+if one of those fields does something a customer token should not be able to do.
+
+`tools/schema-diff.sh` enumerates the gap, writes the full field lists to
+`schema-diff-out/`, and flags the extras whose names match a sensitive keyword —
+account, admin, impersonate, token, billing, sso, scim, audit, permission,
+grant, revoke, tenant and so on. `tools/sigreport.py` then prints the argument
+signature of each, marking any that takes an `account_id`, `user_id`, `board_id`
+or similar.
+
+Those marked fields are the candidates: reachable with a normal token, absent
+from every published version, and taking an identifier as an argument. Testing
+one is the same B-against-C test already established, aimed at a surface the
+documentation does not describe.
+
+Read signatures before calling anything, and never fire a mutation whose name
+implies deletion or transfer at an object you do not own.
