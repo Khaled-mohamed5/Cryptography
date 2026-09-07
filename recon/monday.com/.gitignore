@@ -4,3 +4,13 @@ reports/live/
 verify-out/
 .cookies-*
 *.cookies
+
+# python bytecode
+__pycache__/
+*.pyc
+
+# output directories written by the probe scripts - these hold live response
+# bodies from real accounts and must not be committed
+schema-diff-out/
+hidden-probe-out/
+mutation-probe-out/
