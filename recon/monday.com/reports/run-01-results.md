@@ -249,3 +249,63 @@ for at a hardcoded `tools/` path and is now resolved next to the script, and a
 **Still nothing confirmed.** A larger unversioned schema is normal GraphQL
 practice and proves nothing on its own. It matters only if one of these fields
 answers B for C's identifiers.
+
+## Run 02 was invalid — the introspection query omitted `args`
+
+`probe_hidden.py` ran and reported "nothing answered B for C's ids". That
+conclusion was not earned.
+
+Every mutation signature printed as `name()`. None of those mutations takes zero
+arguments, and the reason is in `introspect_type`: the introspection query asked
+for `fields { name type { ... } }` and never asked for `args`. So `build()` saw
+an empty argument list for every field, `ARG_VALUES` never matched anything, and
+**no probe ever supplied C's `account_id`**.
+
+What run 02 measured was "does this field return anything to the caller".
+The cross-tenant question — does B get C's data when it asks for C's identifiers
+— was never put. The `empty` verdicts are real, but they answer a different
+question, and none of them clears these fields.
+
+The `service_user_tokens` error is the proof: `argument: service_user_ids is
+required`. The builder should have supplied arguments and could not.
+
+Three fixes:
+
+1. `introspect_type` now requests `args` with three levels of `ofType`
+   unwrapping. `audit_logs` builds as
+   `{ audit_logs(account_id: "36786534", limit: 5) { ... } }` — B's token
+   carrying C's account id, which is the actual test.
+2. A return type whose every field takes arguments, or which is a union or
+   interface, produced no selection set and the field was skipped outright.
+   That is what silenced `usage`, `departments`, `objects`, `user_configs` and
+   the other seven. They now fall back to `__typename`, which always resolves and
+   is enough to separate reachable from refused.
+3. A field whose required arguments cannot be guessed now names them.
+
+Added `chain_service_users()`. `service_users` lists an account's service
+identities and carries `has_token` and `last_token_activity`;
+`service_user_tokens` turns an id into a token. Walking that chain from B
+against C's identities would be credential disclosure rather than a data read,
+so it is worth testing directly. The chain lists both accounts' service users
+first, and if C has none it says so rather than reporting a false pass — C's
+`service_users` came back empty, so there was no id to ask for.
+
+A token value in B's response triggers a stop-and-report, with an explicit
+instruction not to use the token. Its presence is the finding.
+
+Unit-tested: arguments now reach the builder, the `__typename` fallback fires
+for a type whose fields all take arguments, and the token detector passes four
+cases including a null token and an empty list.
+
+## What run 02 does establish
+
+`service_users`, `audit_logs`, `audit_event_catalogue`, `insights`, `campaigns`,
+`segments`, `notifications` and `favorites` all resolve for an ordinary token
+and return an empty result for a free account with no data of that kind. They
+exist and they answer. Whether they authorise by account is the open question.
+
+`audit_logs` returns `timestamp`, `account_id`, `event`, `slug`, `ip_address`,
+`user_agent`, `client_name` and `client_version`. If that field takes an
+`account_id` and honours it without an authorisation check, it is a cross-tenant
+audit-log read including IP addresses. That is the single most valuable thing
+found so far, and run 03 is the first run that actually tests it.

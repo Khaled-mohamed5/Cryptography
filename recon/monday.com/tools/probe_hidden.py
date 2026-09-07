@@ -108,8 +108,10 @@ def unwrap(t):
 def introspect_type(name, cache={}):
     if name in cache:
         return cache[name]
-    q = ('{ __type(name: "%s") { name kind fields { name type { name kind ofType '
-         '{ name kind ofType { name kind ofType { name kind } } } } } } }' % name)
+    q = ('{ __type(name: "%s") { name kind '
+         'fields { name '
+         'args { name type { name kind ofType { name kind ofType { name kind ofType { name kind } } } } } '
+         'type { name kind ofType { name kind ofType { name kind ofType { name kind } } } } } } }' % name)
     try:
         cache[name] = json.loads(post(TOKEN_C, q, 0.4))["data"]["__type"]
     except Exception:
@@ -136,7 +138,11 @@ def selection_for(type_name, depth=0):
         sub = selection_for(ftype, depth + 1)
         if sub:
             picked.append(f"{fname} {sub}")
-    return "{ " + " ".join(picked) + " }" if picked else ""
+    if not picked:
+        # every field needs arguments, or this is a union/interface. __typename
+        # always resolves, which is enough to tell reachable from refused.
+        picked = ["__typename"]
+    return "{ " + " ".join(picked) + " }"
 
 
 def literal(name, type_name, value):
@@ -163,7 +169,7 @@ def build(field, root="Query"):
         elif required:
             missing.append("%s: %s" % (a["name"], inner))
     if missing:
-        return None, "needs args " + ", ".join(missing)
+        return None, "needs " + ", ".join(missing)
     inner, _, _ = unwrap(spec["type"])
     sel = "" if inner in SCALARS else selection_for(inner)
     if not sel and inner not in SCALARS:
@@ -192,6 +198,53 @@ def classify(body, is_attack):
             return G + "empty" + N
         return (R + B + "ANSWERED" + N) if is_attack else (G + "ok" + N)
     return Y + "?" + N
+
+
+def chain_service_users():
+    """service_user_tokens needs service_user_ids, which service_users supplies.
+
+    The interesting shape: service_users lists an account's service identities
+    and carries has_token, and service_user_tokens turns an id into a token. If
+    B can walk that chain against C's identities, that is credential disclosure
+    rather than a data read.
+    """
+    print("\n%s=== chained: service_users -> service_user_tokens ===%s" % (B, N))
+
+    sel = selection_for("ServiceUser") or "{ id name has_token }"
+    ids_by = {}
+    for label, token in (("C", TOKEN_C), ("B", TOKEN_B)):
+        body = post(token, "{ service_users %s }" % sel)
+        found = re.findall(r'"id"\s*:\s*"?(\d+)"?', body)
+        ids_by[label] = found
+        print("  %s's own service_users: %s%s%s"
+              % (label, D, (", ".join(found[:6]) if found else "none"), N))
+
+    target = ids_by["C"]
+    if not target:
+        print("  %sAccount C has no service user, so there is no id to ask for and this"
+              % D)
+        print("  chain cannot be tested. A service user is created by installing an app")
+        print("  or through create_service_user - on account C, with C's own token, if")
+        print("  you want to set this up.%s" % N)
+        return None
+
+    idlist = ", ".join('"%s"' % i for i in target[:3])
+    q = "{ service_user_tokens(service_user_ids: [%s]) { service_user_id token } }" % idlist
+    print("  %s%s%s" % (D, q, N))
+
+    base = post(TOKEN_C, q)
+    atk = post(TOKEN_B, q)
+    print("  baseline %-22s attack %s" % (classify(base, False), classify(atk, True)))
+    os.makedirs("hidden-probe-out", exist_ok=True)
+    with open("hidden-probe-out/service_user_tokens.chained.json", "w") as fh:
+        json.dump({"query": q, "baseline": base, "attack": atk}, fh, indent=2)
+
+    if re.search(r'"token"\s*:\s*"[^"]{8,}"', atk):
+        print("  %s%s>>> a token value came back to B. Stop and write this up before"
+              % (R, B))
+        print("  doing anything else - do not use the token, its presence is the finding.%s" % N)
+        return "service_user_tokens"
+    return None
 
 
 def main():
@@ -224,7 +277,11 @@ def main():
             findings.append(field)
         print()
 
-    print("%s=== mutations: signatures only, never executed ===%s" % (B, N))
+    chained = chain_service_users()
+    if chained:
+        findings.append(chained)
+
+    print("\n%s=== mutations: signatures only, never executed ===%s" % (B, N))
     print("%s  read these before touching any of them%s\n" % (D, N))
     mt = introspect_type("Mutation")
     if mt:
