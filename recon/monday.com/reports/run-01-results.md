@@ -514,3 +514,59 @@ hardened and the remaining work belongs on the web application rather than the
 public API: the `/nhp` Next.js routes, the WordPress install under `/l/`, and
 the session-invalidation test in RUNBOOK step 7, which has never been run and
 needs only a browser.
+
+## Run 06 — the first result that is structurally different
+
+```
+form(formToken:)   control B -> B's own form   SUCCEEDED
+                   attack  B -> C's form       User unauthorized to perform action
+                                               USER_UNAUTHORIZED
+```
+
+Every earlier cross-tenant attempt returned `Couldn't find Board with 'id'=...`
+or an empty list — tenant-scoped lookup, where C's object was never a candidate
+from B's position and no authorisation decision was ever made.
+
+This one **found C's form by its token across the account boundary and then
+refused**. The formToken namespace is global. The defence that answered all 35
+previous vectors is not in this path, and an explicit ownership check is the only
+thing standing there.
+
+That check is correct on `form`. Whether it is on every form mutation is a
+different question, and it is worth asking because **a form token is not a
+secret**. Forms exist to be filled in by people outside the account, and the
+token travels in the URL of every published form. Anyone who has ever been sent a
+form link holds the token. A form mutation missing the ownership check would be
+reachable by all of them — not by an attacker who first has to guess 128 bits.
+
+Token entropy rules out guessing: both are 32 hex characters, ~116 bits, with
+zero shared leading characters. Enumeration is not a path. Possession is.
+
+`set_form_password` was not tested — the input object was guessed as
+`{ password, enabled }` and `enabled` is not a field of `SetFormPasswordInput`,
+so the call was rejected at validation and never reached a resolver. That is the
+third time a guessed query shape has produced a result that measured nothing.
+
+## `tools/probe_form_sweep.py`
+
+Enumerates every mutation whose arguments include a form token, builds each call
+from introspection — arguments, input-object fields and enum values all read from
+the schema rather than guessed — and runs both arms: control on B's own form,
+attack on C's.
+
+The verdict now separates **SHAPE** (rejected at validation, never reached a
+resolver, measures nothing) from **DENIED** (a real authorisation decision).
+Conflating those two is the error that has recurred through this whole
+engagement, and it is now a distinct verdict rather than a judgement call.
+
+A control that fails marks its attack arm unusable rather than counting it as a
+pass. Anything named `delete_*` is skipped — destroying a form object to test
+authorisation destroys the evidence with it.
+
+Unit-tested: `set_form_password` builds as
+`input: { password: "canary", isEnabled: true }` with the field names taken from
+`SetFormPasswordInput`, and the classifier passes six cases including both real
+SHAPE errors this engagement produced.
+
+**Confirmed findings: still zero — but this is the first surface where the
+question is open rather than answered.**
