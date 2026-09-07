@@ -14,7 +14,7 @@ Session material goes in `.cookies-a` / `.cookies-b`, which are gitignored.
 | region | `euc1` |
 | plan | free (`is_paying_account=false`) |
 
-## Account B
+## Account B — the attacker in the cross-tenant tests
 
 | | |
 |---|---|
@@ -24,6 +24,23 @@ Session material goes in `.cookies-a` / `.cookies-b`, which are gitignored.
 | email | `hishamapes20+1122@gmail.com` |
 | region | `euc1` |
 | plan | free |
+| API token | scope `me:write`, no `exp` claim — revoke when done |
+
+## Account C — the victim
+
+| | |
+|---|---|
+| account_id | `36786534` |
+| user_id | `115703279` |
+| region | `euc1` |
+| API token | scope `me:write`, no `exp` claim — revoke when done |
+
+Created 112 seconds after B. The gap between them is the ID-density datapoint:
+`actid` +179, `uid` +1077 — roughly 1.6 accounts and 9.6 users per second,
+allocated sequentially. Useful for the impact section of any ID-based finding,
+stated as an inference from two samples rather than a measured rate.
+
+**B attacks C.** Keep the direction fixed so the evidence stays unambiguous.
 
 ## Other accounts in the same browser profile — not recorded here
 
