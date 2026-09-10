@@ -24,6 +24,11 @@ The code demonstrates:
 
 This project is for educational purposes to understand how DES works under the hood.
 
+ Also in this repository
+
+- `portal/` – **Meridian Operations Portal — Data Import**: a small Flask app for
+  importing product records from a supplier XML feed. See `portal/README.md`.
+
 # Author
 
 Khaled Mohamed  

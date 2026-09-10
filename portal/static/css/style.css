@@ -1,0 +1,279 @@
+/* Meridian Operations Portal -- application shell. */
+
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --ink: #1b1f27;
+  --ink-soft: #656d7b;
+  --accent: #2f6fed;
+  --accent-ink: #ffffff;
+  --side-bg: #171c26;
+  --side-ink: #a8b1c1;
+  --side-ink-strong: #ffffff;
+  --side-hover: #222937;
+  --danger: #b4232b;
+  --radius: 8px;
+  --side-w: 232px;
+}
+
+* { box-sizing: border-box; }
+
+.sprite { position: absolute; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); }
+
+/* ---- shell ---- */
+
+.app { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: var(--side-w);
+  flex: 0 0 var(--side-w);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 14px;
+  background: var(--side-bg);
+  color: var(--side-ink);
+}
+
+.logo { display: flex; align-items: center; gap: 10px; padding: 0 8px 18px; }
+.logo .mark { width: 28px; height: 28px; }
+.logo b { display: block; color: var(--side-ink-strong); font-size: 15px; letter-spacing: .2px; }
+.logo small { display: block; color: var(--side-ink); font-size: 11px; }
+
+.nav-group { margin-bottom: 16px; }
+
+.cap {
+  padding: 0 8px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #6d7688;
+}
+
+.sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  margin-bottom: 1px;
+  border-radius: 6px;
+  color: var(--side-ink);
+  text-decoration: none;
+}
+
+.sidebar a:hover { background: var(--side-hover); color: var(--side-ink-strong); }
+
+.sidebar a.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+.ic { flex: 0 0 16px; opacity: .85; }
+.sidebar a.active .ic { opacity: 1; }
+
+.spacer { flex: 1; }
+
+.side-foot {
+  padding: 12px 8px 0;
+  border-top: 1px solid #262d3b;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #5f6878;
+}
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* ---- topbar ---- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.search { position: relative; flex: 1; max-width: 420px; }
+.search .si { position: absolute; left: 10px; top: 9px; color: var(--ink-soft); }
+
+.search input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+}
+
+.search input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.tb-right { margin-left: auto; }
+.usermenu { display: flex; align-items: center; gap: 9px; }
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.usermenu .btn.secondary { margin-left: 6px; }
+.u-name { font-weight: 600; line-height: 1.2; }
+.u-role { font-size: 11.5px; color: var(--ink-soft); line-height: 1.2; }
+
+/* ---- content ---- */
+
+.content { flex: 1; padding: 24px; max-width: 980px; width: 100%; }
+
+.page-head { margin-bottom: 18px; }
+.page-head h1 { margin: 2px 0 4px; font-size: 22px; letter-spacing: -.2px; }
+.page-head p { margin: 0; }
+
+.crumbs {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.muted { color: var(--ink-soft); }
+.small { font-size: 12.5px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.card .hd {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.card .bd { padding: 16px; }
+.card .bd > :first-child { margin-top: 0; }
+.card .bd > :last-child { margin-bottom: 0; }
+.card h3 { font-size: 13px; margin: 18px 0 8px; }
+
+.actions { margin-top: 12px; }
+.doc-input { min-height: 190px; }
+
+ul.rules { padding-left: 18px; }
+ul.rules li { margin-bottom: 4px; }
+
+/* ---- controls ---- */
+
+.mono, pre, code, textarea {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+               "Liberation Mono", monospace;
+}
+
+textarea {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: inherit;
+  font-size: 12.5px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+
+button, .btn {
+  display: inline-block;
+  padding: 8px 15px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:hover, .btn:hover { filter: brightness(1.07); }
+button:disabled { opacity: .6; cursor: default; filter: none; }
+
+.btn.secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.btn.sm { padding: 5px 11px; font-size: 12.5px; }
+
+pre {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+pre.bad { border-color: #e8bcbe; background: #fdf3f3; color: var(--danger); }
+
+code { font-size: .93em; }
+
+.foot-note {
+  padding: 14px 24px 22px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+/* ---- narrow screens ---- */
+
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; flex: none; }
+  .spacer { display: none; }
+  .content, .topbar, .foot-note { padding-left: 16px; padding-right: 16px; }
+}

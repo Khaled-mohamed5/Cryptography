@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Meridian Operations Portal{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% include "_icons.svg" %}
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <img class="mark" src="{{ url_for('static', filename='favicon.svg') }}" alt="">
+      <div><b>Meridian</b><small>Operations Portal</small></div>
+    </div>
+    {% for group in nav %}
+    <div class="nav-group">
+      <div class="cap">{{ group.caption }}</div>
+      {% for link in group.links %}
+      <a href="{{ link.href }}" class="{{ 'active' if link.href == active_path else '' }}"><svg class="ic" width="16" height="16"><use href="#{{ link.icon }}"/></svg> {{ link.label }}</a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="spacer"></div>
+    <div class="side-foot">Meridian Operations Portal<br>v1.4.2</div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <form class="search" method="get" action="/search">
+        <svg class="si" width="16" height="16"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="Search products, SKUs...">
+      </form>
+      <div class="tb-right">
+        {% if user %}
+          <div class="usermenu">
+            <div class="avatar">{{ user.name[0] | upper }}</div>
+            <div>
+              <div class="u-name">{{ user.name }}</div>
+              <div class="u-role">{{ user.role }}</div>
+            </div>
+            <a class="btn secondary sm" href="/logout">Sign out</a>
+          </div>
+        {% else %}
+          <a class="btn secondary sm" href="/login">Sign in</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+
+    <div class="foot-note">Authorized users only. This system is monitored. &copy; 2026 Meridian Distribution.</div>
+  </div>
+</div>
+
+</body>
+</html>

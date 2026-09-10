@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Data Import &mdash; Meridian Operations Portal{% endblock %}
+
+{% block content %}
+<div class="page-head"><div><div class="crumbs">Catalog</div><h1>Data Import</h1>
+  <p class="muted small">Import product records from a supplier XML feed.</p></div></div>
+
+<div class="card">
+  <div class="hd">Import products</div>
+  <div class="bd">
+    <p class="muted small">Paste a supplier catalog document below. Records will be parsed and previewed &mdash; nothing is written to the catalog.</p>
+    <label class="sr-only" for="xml">Supplier catalog document</label>
+    <textarea id="xml" class="mono doc-input" spellcheck="false">{{ sample }}</textarea>
+    <div class="actions"><button id="go" type="button">Import</button></div>
+    <h3>Import result</h3>
+    <pre id="out">No records imported yet.</pre>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd">Accepted documents</div>
+  <div class="bd">
+    <p class="muted small">Supplier feeds are treated as untrusted input. A document is rejected outright if it:</p>
+    <ul class="muted small rules">
+      <li>carries a document type declaration (<code>&lt;!DOCTYPE&nbsp;&hellip;&gt;</code>), an entity declaration, or a reference to an external document;</li>
+      <li>is larger than {{ '{:,}'.format(max_bytes) }} bytes, or holds more than {{ '{:,}'.format(max_records) }} <code>&lt;product&gt;</code> records;</li>
+      <li>is not well-formed XML, or is not rooted at <code>&lt;catalog&gt;</code>.</li>
+    </ul>
+    <p class="muted small">Individual records are skipped, and reported under <code>problems</code>, when they are missing <code>&lt;name&gt;</code> or <code>&lt;sku&gt;</code>, repeat an earlier SKU, or carry a field longer than {{ max_field }} characters.</p>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+{% endblock %}
