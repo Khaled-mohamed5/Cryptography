@@ -1,0 +1,138 @@
+# Verified plaintext recovered from the DOM Invader string array
+#
+# Format: <array entry>  ->  <decoded value>
+#
+# Every pairing in this file was produced mechanically by running the sample's own
+# decoder (rotated-alphabet base64 -> UTF-8 bytes -> decodeURIComponent) over the
+# array entries, and is re-checked by dom-invader/verify-strings.js. Nothing here
+# is inferred.
+#
+# Entries that decode to short mixed-case nonsense are the obfuscator's random
+# dispatcher-object key names and are listed last for completeness.
+
+## Product identity
+qNvYCerptuLUDMfKzxi                                       ->  BurpDOMInvader
+
+## Prototype-pollution payloads
+y29UC3rYy29UC3rYDwn0B3j1y3rVCLTWCM90B3r5CgvDwW            ->  constrconstructoructor[prototype][
+ChjVDg90ExbLug9SBhv0Aw9UsNnVBG                            ->  prototypePollutionJson
+Aw5Qzwn0uhjVDg90ExbLug9SBhv0Aw9UsNnVBG                    ->  injectPrototypePollutionJson
+ChjVDg90ExbLihbVBgX1DgLVBJO                               ->  prototype pollution:
+y29UC3rYDwn0B3iUChjVDg90ExbLlG                            ->  constructor.prototype.
+ChjVDg90ExbLug9SBhv0Aw9U                                  ->  prototypePollution
+y29UC3rYDwn0B3iUChjVDg90ExbLlNbYB3bLCNr5pxzHBhvL          ->  constructor.prototype.property=value
+x19WCM90B19FlG                                            ->  __proto__.
+x19WCM9Fx3bYB3rVx190B19FlG                                ->  __pro__proto__to__.
+y29UC3rYy29UC3rYDwn0B3j1y3rVCI5WCM90B3r5CguU              ->  constrconstructoructor.prototype.
+
+## Sink and source names
+zg9JDw1LBNqUAw1WBgvTzw50yxrPB24Uy3jLyxrLsfrnterVy3vTzw50  ->  document.implementation.createHTMLDocument
+zwXLBwvUDc5ZDhLSzs5JC3nuzxH0                              ->  element.style.cssText
+zg9JDw1LBNqUD3jPDgvSBG                                    ->  document.writeln
+zwXLBwvUDc5PBM5LCLrLEhq                                   ->  element.innerText
+zg9JDw1LBNqUyMfZzvvssq                                    ->  document.baseURI
+ALf1zxj5lMDSB2jHBev2ywW                                   ->  jQuery.globalEval
+ALf1zxj5lMf0DhiUB25TB3vZzwrVD24                           ->  jQuery.attr.onmousedown
+zg9JDw1LBNqUzg9JDw1LBNrvuKK                               ->  document.documentURI
+zwXLBwvUDc5ZzxrbDhrYAwj1DguUywn0Aw9U                      ->  element.setAttribute.action
+Bg9JyxrPB24UC2vHCMnO                                      ->  location.search
+C2nYAxb0lMLUBMvYvgv4Da                                    ->  script.innerText
+zwXLBwvUDc5VDxrLCLrLEhq                                   ->  element.outerText
+Bg9JyxrPB24UAhjLzG                                        ->  location.href
+C2vYDMLJzvDVCMTLCI5YzwDPC3rLCG                            ->  serviceWorker.register
+yw5JAg9YlNrHCMDLDa                                        ->  anchor.target
+zwXLBwvUDc5PBNnLCNrbzgPHy2vUDeHutuW                       ->  element.insertAdjacentHTML
+zg9JDw1LBNqUCMvMzxjYzxi                                   ->  document.referrer
+zwXLBwvUDc50zxH0q29UDgvUDa                                ->  element.textContent
+Aw5WDxqUDMfSDwu                                           ->  input.value
+Bg9JyxrPB24UAgfZAa                                        ->  location.hash
+Aw5WDxqUDhLWzq                                            ->  input.type
+
+## Taint-tracking bookkeeping
+BwfUAxb1Bgf0zwreyxrH                                      ->  manipulatedData
+Aw5PDe1VDxnLrxzLBNq                                       ->  initMouseEvent
+C3bVB2zpCMLNAw4                                           ->  spoofOrigin
+CMvTB3zLsg9VAW                                            ->  removeHook
+B3jPz2LUq2HLy2TLzezPCNn0                                  ->  originCheckedFirst
+Bw9KAwzPzwrfDMvUDeXPC3rLBMvY                              ->  modifiedEventListener
+y2fWDhvYzvn0ywnRvhjHy2u                                   ->  captureStackTrace
+zgLZCgf0y2HfDMvUDa                                        ->  dispatchEvent
+BM9Urw5JB2rLzenOyxjHy3rLCNm                               ->  nonEncodedCharacters
+zxzLBNrmAxn0zw5LCG                                        ->  eventListener
+C2LUA1zHBhvL                                              ->  sinkValue
+ChjLDMLVDxnwywX1zxm                                       ->  previousValues
+zM9SBg93DxbwzxjPzMLLza                                    ->  followupVerified
+B3jPz2LUu3rHy2TuCMfJzq                                    ->  originStackTrace
+DNvSBMvYywjSzvnPBMS                                       ->  vulnerableSink
+zgf0yufJy2vZC2vK                                          ->  dataAccessed
+y2HHCMfJDgvYC0vUy29Kzwq                                   ->  charactersEncoded
+ywXYzwfKEvnLzw4                                           ->  alreadySeen
+zgf0yq                                                    ->  data
+C2LUAW                                                    ->  sink
+C2vHCMnOugfYyw1Z                                          ->  searchParams
+zMLYzwrfDMvUDa                                            ->  firedEvent
+Cg9ZDe1LC3nHz2veyxrH                                      ->  postMessageData
+C2LUA3m                                                   ->  sinks
+DMvYAwzPzwq                                               ->  verified
+z3vLC3ntDhjPBMDZ                                          ->  guessStrings
+z3vLC3nLzfn0CMLUz3m                                       ->  guessedStrings
+
+## Reporting vocabulary
+C3rHy2S                                                   ->  stack
+DgL0Bgu                                                   ->  title
+zgvZy3jPChrPB24                                           ->  description
+y29UzMLKzw5Jzq                                            ->  confidence
+tg93                                                      ->  Low
+DhLWzq                                                    ->  type
+
+## Plain DOM / JS API names
+y3jLyxrLrwXLBwvUDa                                        ->  createElement
+ChjVEgLLzeXVy2f0Aw9UrNvUy3rPB25dywXSyMfJAW                ->  proxiedLocationFunctionCallback
+zNjHBwvfBgvTzw50                                          ->  frameElement
+B25TzxnZywDL                                              ->  onmessage
+Dg9vChbLCKnHC2u                                           ->  toUpperCase
+C3rYAw5NAwz5                                              ->  stringify
+y3jLyxrLq29UDgv4DhvHBezYywDTzw50                          ->  createContextualFragment
+AgfZt3DUuhjVCgvYDhK                                       ->  hasOwnProperty
+zgvMAw5LuhjVCgvYDhK                                       ->  defineProperty
+C3rHCNrZv2L0Aa                                            ->  startsWith
+B25RzxLWCMvZCW                                            ->  onkeypress
+Bg9JyxrPB25uB1n0CMLUz0nHBgXIywnR                          ->  locationToStringCallback
+z2v0                                                      ->  get
+C2v0                                                      ->  set
+ywrK                                                      ->  add
+Dg9W                                                      ->  top
+A2v5                                                      ->  key
+Bg9N                                                      ->  log
+zxjYB3i                                                   ->  error
+Bw91C2vKB3DU                                              ->  mousedown
+Bw91C2vVDMvY                                              ->  mouseover
+C2v0sw50zxj2ywW                                           ->  setInterval
+C2v0vgLTzw91Da                                            ->  setTimeout
+Cg9ZDe1LC3nHz2u                                           ->  postMessage
+Dg9tDhjPBMC                                               ->  toString
+zNjVBunOyxjdB2rL                                          ->  fromCharCode
+Dw5KzwzPBMvK                                              ->  undefined
+Bg9JyxrPB24                                               ->  location
+zg9JDw1LBNq                                               ->  document
+zg9LCYbUB3q                                               ->  does not
+
+## Obfuscator-generated dispatcher key names (no semantic content)
+Aw5KzxHpzG                                                ->  indexOf
+y2fSBgvL                                                  ->  callee
+Dg93yMC                                                   ->  towbg
+y3jLyxrL                                                  ->  create
+q2fSBgvL                                                  ->  Callee
+CMvWBgfJzq                                                ->  replace
+zw50CMLLCW                                                ->  entries
+BwvZC2fNzq                                                ->  message
+zwfPqNm                                                   ->  eaiBs
+zg93y3u                                                   ->  dowcu
+C3bLCNK                                                   ->  spery
+BMvvBu0                                                   ->  neUmM
+y2fUyxj5                                                  ->  canary
+zM9YrwfJAa                                                ->  forEach
+BNrPBw4                                                   ->  ntimn
+y2fZsNK                                                   ->  casJy
+C2vHCMnO                                                  ->  search
+A2v5zg93BG                                                ->  keydown
